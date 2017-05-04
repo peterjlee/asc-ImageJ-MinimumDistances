@@ -34,12 +34,12 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	if (lcf!=1) {
 		print("Current image pixel width = " + pixelWidth + " " + unit +".");
 		/* ask for a file to be imported */
-		showMessageWithCancel("XY coordinates in pixels", "A reference location file with X in column 1 and Y in column 2 is now required.\n\(either a tab separated txt file exported by ImageJ or a csv file\).\nPIXELS: The macro assumes that the imported XY values are in pixels.\n - - the macro will generate both pixel and scaled information.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 20\(!\) columns:\n   Conversions to pixel data based on scale factor: X(px), Y(px), XM(px), YM(px), BX(px), BY(px), Width(px), Height(px)\n   New minimum distance measurements: MinDist(px), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr(px)\n   New maximum distance measurements: MaxDist(px), MaxLocX, MaxLocY\n   Scaled distances: MinRefDist \("+unit+"\), CtrRefDist\("+unit+"\), MaxRefDist\("+unit+"\)");
+		showMessageWithCancel("XY coordinates in pixels", "A reference location file with X in column 1 and Y in column 2 is now required\n\(either a tab separated txt file exported by ImageJ or a csv file\).\nPIXELS: The macro assumes that the imported XY values are in pixels.\n - - the macro will generate both pixel and scaled information.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 20\(!\) columns:\n   Conversions to pixel data based on scale factor: X\(px\), Y\(px\), XM\(px\), YM\(px\), BX\(px\), BY\(px\), Width\(px\), Height\(px\)\n   New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY\n   Scaled distances: MinRefDist \("+unit+"\), CtrRefDist\("+unit+"\), MaxRefDist\("+unit+"\)");
 	}
 	else {
 		print("No scale is set; all data is assumed to be in pixels.");
 		/* ask for a file to be imported */
-		showMessageWithCancel("XY coordinates in pixels", "A reference location file with X in column 1 and Y in column 2 is now required.\n - - either a tab separated txt file exported by ImageJ or a csv file.\nPIXELS: The macro assumes that the imported XY values are in pixels.\n - - Because the image scale is pixels the macro will generate only pixel distances.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 9 columns:\n   New minimum distance measurements: MinDist(px), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr(px)\n   New maximum distance measurements: MaxDist(px), MaxLocX, MaxLocY\n");
+		showMessageWithCancel("XY coordinates in pixels", "A reference location file with X in column 1 and Y in column 2 is now required.\n - - either a tab separated txt file exported by ImageJ or a csv file.\nPIXELS: The macro assumes that the imported XY values are in pixels.\n - - Because the image scale is pixels the macro will generate only pixel distances.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 9 columns:\n   New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY\n");
 	}
 	if (isNaN(getResult('X',0)) && lcf!=1) {
 		print("As coordinates from Particles4-8 are never scaled three scaled \(" + unit + "\) columns will be added at the end.");
@@ -184,10 +184,9 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 			analyzeNow = Dialog.getCheckbox();
 			if (analyzeNow) {
 				setOption("BlackBackground", false);
-				run("Analyze Particles..."); /* let user select settings */
-				// if (nResults==0)
-					// run("Analyze Particles...", "display add");
-				// else run("Analyze Particles..."); /* let user select settings */
+				if (nResults==0)
+					run("Analyze Particles...", "display add");
+				else run("Analyze Particles..."); /* let user select settings */
 				if (nResults!=roiManager("count"))
 					restoreExit("Results and ROI Manager counts do not match!");
 			}
