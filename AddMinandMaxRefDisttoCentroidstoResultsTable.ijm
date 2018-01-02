@@ -5,7 +5,8 @@
 	Array sorting based on macro example: http://rsb.info.nih.gov/ij/macros/examples/ArraySortingDemo.txt
 	Mod Peter J. Lee (NHMFL) to calculate minimum and maximum distances from reference file of xy coordinates 5/5/2016,
 	mod 6/10/2016 to be universal regardless of scale and method (I hope). Added angular offsets 7/20/2016.
-	This version v170503 adds a message box with a some description of the required reference file
+	v170503 adds a message box with a some description of the required reference file
+	v170504 garbage collection
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
@@ -166,6 +167,8 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	print("-----");
 	restoreSettings();
 	showStatus("Minimum and Maximum Reference Distances to Centroids Added to Results");
+	beep(); wait(300); beep(); wait(300); beep();
+	run("Collect Garbage"); 
 }
 	/* ( 8(|)  ( 8(|)  Functions   ( 8(|)  ( 8(|)  */
 	
