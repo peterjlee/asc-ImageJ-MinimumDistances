@@ -69,7 +69,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		hdr = split(text[0]); /* these are the column indexes */
 		nbPoints = split(text[1]);
 		iX = 0; iY = 1;
-		coOrds = text.length-2;
+		coOrds = lengthOf(text)-2;
 		xpoints = newArray(coOrds);
 		ypoints = newArray(coOrds); 
 		print("Imported " + coOrds + " points from " + fileName + " TXT point set...");
@@ -86,7 +86,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		hdr = split(text[0]); /* these are the column indexes */
 		nbPoints = split(text[1]);
 		iX = 0; iY = 1;
-		coOrds = text.length-2;
+		coOrds = lengthOf(text)-2;
 		xpoints = newArray(coOrds);
 		ypoints = newArray(coOrds); 
 		print("Imported " + coOrds + " points from " + fileName + " CSV point set...");
@@ -118,7 +118,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 			X1 = getResult('XM',i);  /* for Landini Particles */
 			Y1 = getResult('YM',i);  /* for Landini Particles */
 		}
-		for (j=0 ; j<(xpoints.length); j++) {
+		for (j=0 ; j<(lengthOf(xpoints)); j++) {
 			X2 = xpoints[j];
 			Y2 = ypoints[j];
 			D = sqrt((X1-X2)*(X1-X2)+(Y1-Y2)*(Y1-Y2));
@@ -128,7 +128,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		Array.sort(sortedDistances);
 		rankPosDist = Array.rankPositions(distance);
 		minD = sortedDistances[0];
-		maxD = sortedDistances[distance.length-1];
+		maxD = sortedDistances[lengthOf(distance)-1];
 		/* nearest neighbor alternative */
 		if (minD==0) {
 			minD = sortedDistances[1];
@@ -151,7 +151,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		setResult("Feret_MinDAngle_Offset", i, FMinDAngleO);
 		setResult("DistToRefCtr\(px\)", i, dRef);
 		setResult("MaxDist\(px\)", i, maxD);
-		l = rankPosDist[distance.length-1];
+		l = rankPosDist[lengthOf(distance)-1];
 		setResult("MaxLocX", i, xpoints[l]);
 		setResult("MaxLocY", i, ypoints[l]);
 		if (lcf!=1) {
