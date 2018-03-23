@@ -7,6 +7,7 @@
 	mod 6/10/2016 to be universal regardless of scale and method (I hope). Added angular offsets 7/20/2016.
 	v170503 adds a message box with a some description of the required reference file
 	v170504 garbage collection
+	v180323 Cleanup up some redundant code and tried to make macro smarter about removing header (and NaN) rows.
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
@@ -61,48 +62,47 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		updateResults();
 	}
 	setBatchMode(true);
-
 	start = getTime(); /* used for debugging macro to optimize speed */
-	if (endsWith(fileName, ".txt")) {	/* for input is in TXT format with tab */
-		/* parse text by lines */
-		text = split(allText, "\n");
-		hdr = split(text[0]); /* these are the column indexes */
-		nbPoints = split(text[1]);
-		iX = 0; iY = 1;
-		coOrds = lengthOf(text)-2;
-		xpoints = newArray(coOrds);
-		ypoints = newArray(coOrds); 
-		print("Imported " + coOrds + " points from " + fileName + " TXT point set...");
-		/* loading and parsing each line */
-		for (i = 2; i < (coOrds+2); i++){
-			line = split(text[i],"	");
-			xpoints[i-2] = parseInt(line[iX]);
-			ypoints[i-2] = parseInt(line[iY]); 
+	if (endsWith(fileName, ".txt")) fileFormat = "txt"; /* for input is in TXT format with tab */
+	else if (endsWith(fileName, ".csv")) fileFormat = "csv"; /* for input is in CSV format */
+	else restoreExit("Selected file is not in a supported format \(.txt or .csv\)");	 /* in case of any other format */
+	text = split(allText, "\n"); /* parse text by lines */
+	hdrCount = 0;
+	iX = 0; iY = 1;
+	coOrds = lengthOf(text);
+	xpoints = newArray(coOrds);
+	ypoints = newArray(coOrds); 
+	for (i = 0; i < (coOrds); i++){ /* loading and parsing each line */
+		if (fileFormat=="csv") line = split(text[i],",");
+		if (fileFormat=="txt") line = split(text[i],"	");
+		if (isNaN(parseInt(line[iX]))){ /* Do not test line[iY] is it might not exist */
+			hdrCount += 1;
+		}
+		else {
+			xpoints[i-hdrCount] = parseInt(line[iX]);
+			ypoints[i-hdrCount] = parseInt(line[iY]);
 		}
 	}
-	
-	else if (endsWith(fileName, ".csv")) { /* for input is in CSV format */
-		text = split(allText, "\n"); /* parse text by lines */
-		hdr = split(text[0]); /* these are the column indexes */
-		nbPoints = split(text[1]);
-		iX = 0; iY = 1;
-		coOrds = lengthOf(text)-2;
-		xpoints = newArray(coOrds);
-		ypoints = newArray(coOrds); 
-		print("Imported " + coOrds + " points from " + fileName + " CSV point set...");
-		for (i = 2; i < (coOrds+2); i++){ /* loading and parsing each line */
-			line = split(text[i],",");
-			xpoints[i-2] = parseInt(line[iX]);
-			ypoints[i-2] = parseInt(line[iY]); 
-		} 
+	if (hdrCount > 0){
+		coOrds = coOrds-hdrCount;
+		xpoints = Array.trim(xpoints, coOrds);
+		ypoints = Array.trim(ypoints, coOrds);
 	}
-	else restoreExit("Selected file is not in a supported format \(.txt or .csv\)");	 /* in case of any other format */
+	print(xpoints[coOrds-1], ypoints[coOrds-1]);
+	print(xpoints[coOrds-1], ypoints[coOrds-2]);
+	print(xpoints[coOrds-1], ypoints[coOrds-3]);
+	print(xpoints[coOrds-1], ypoints[coOrds-4]);
+	print(xpoints[coOrds-1], ypoints[coOrds-5]);
 	
+	if (hdrCount==0) print("Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set...");	
+	else print("Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set, ignoring " + hdrCount + " lines of header.");
+	/* loading and parsing each line */
 	Array.getStatistics(xpoints, minx, maxx, meanx, stdx);
 	Array.getStatistics(ypoints, miny, maxy, meany, stdy);
 	print("Center of Reference Point Set is at x = " + meanx + ", y= " + meany + " \(pixels\).");
-		
-	distance = newArray(coOrds);
+	print("Reference Point Set Range x: " + minx + " - " + maxx + ", y: " + miny + " - " + maxy + " \(pixels\).");
+	
+	distances = newArray(coOrds);
 	for (i=0 ; i<objects; i++) {
 		showProgress(i, objects);
 		roiManager("select", i);
@@ -118,17 +118,12 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 			X1 = getResult('XM',i);  /* for Landini Particles */
 			Y1 = getResult('YM',i);  /* for Landini Particles */
 		}
-		for (j=0 ; j<(lengthOf(xpoints)); j++) {
-			X2 = xpoints[j];
-			Y2 = ypoints[j];
-			D = sqrt((X1-X2)*(X1-X2)+(Y1-Y2)*(Y1-Y2));
-			distance[j] = D;
-		}
-		sortedDistances = Array.copy(distance);
+		for (j=0 ; j<(lengthOf(xpoints)); j++) distances[j] = sqrt((X1-xpoints[j])*(X1-xpoints[j])+(Y1-ypoints[j])*(Y1-ypoints[j]));
+		sortedDistances = Array.copy(distances);
 		Array.sort(sortedDistances);
-		rankPosDist = Array.rankPositions(distance);
+		rankPosDist = Array.rankPositions(distances);
 		minD = sortedDistances[0];
-		maxD = sortedDistances[lengthOf(distance)-1];
+		maxD = sortedDistances[lengthOf(distances)-1];
 		/* nearest neighbor alternative */
 		if (minD==0) {
 			minD = sortedDistances[1];
@@ -151,7 +146,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		setResult("Feret_MinDAngle_Offset", i, FMinDAngleO);
 		setResult("DistToRefCtr\(px\)", i, dRef);
 		setResult("MaxDist\(px\)", i, maxD);
-		l = rankPosDist[lengthOf(distance)-1];
+		l = rankPosDist[lengthOf(distances)-1];
 		setResult("MaxLocX", i, xpoints[l]);
 		setResult("MaxLocY", i, ypoints[l]);
 		if (lcf!=1) {
@@ -170,14 +165,16 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	beep(); wait(300); beep(); wait(300); beep();
 	run("Collect Garbage"); 
 }
-	/* ( 8(|)  ( 8(|)  Functions   ( 8(|)  ( 8(|)  */
+	/*  ( 8(|)	( 8(|)	All ASC Functions	@@@@@:-)	@@@@@:-)   */
 	
 	function checkForRoiManager() {
-		/* v161109 adds the return of the updated ROI count and also adds dialog if there are already entries just in case . . */
+		/* v161109 adds the return of the updated ROI count and also adds dialog if there are already entries just in case . .
+			v180104 only asks about ROIs if there is a mismatch with the results */
 		nROIs = roiManager("count");
-		nRES = nResults; /* not really needed except to provide useful information below */
-		if (nROIs==0) runAnalyze = true;
-		else runAnalyze = getBoolean("There are already " + nROIs + " in the ROI manager; do you want to clear the ROI manager and reanalyze?");
+		nRES = nResults; /* Used to check for ROIs:Results mismatch */
+		if(nROIs==0) runAnalyze = true; /* Assumes that ROIs are required and that is why this function is being called */
+		else if(nROIs!=nRES) runAnalyze = getBoolean("There are " + nRES + " results and " + nROIs + " ROIs; do you want to clear the ROI manager and reanalyze?");
+		else runAnalyze = false;
 		if (runAnalyze) {
 			roiManager("reset");
 			Dialog.create("Analysis check");
@@ -198,7 +195,9 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		return roiManager("count"); /* returns the new count of entries */
 	}
 	function restoreExit(message){ /* clean up before aborting macro then exit */
+		/* 9/9/2017 added Garbage clean up suggested by Luc LaLonde - LBNL */
 		restoreSettings(); /* clean up before exiting */
 		setBatchMode("exit & display"); /* not sure if this does anything useful if exiting gracefully but otherwise harmless */
+		run("Collect Garbage");
 		exit(message);
 	}
