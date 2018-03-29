@@ -88,12 +88,6 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		xpoints = Array.trim(xpoints, coOrds);
 		ypoints = Array.trim(ypoints, coOrds);
 	}
-	print(xpoints[coOrds-1], ypoints[coOrds-1]);
-	print(xpoints[coOrds-1], ypoints[coOrds-2]);
-	print(xpoints[coOrds-1], ypoints[coOrds-3]);
-	print(xpoints[coOrds-1], ypoints[coOrds-4]);
-	print(xpoints[coOrds-1], ypoints[coOrds-5]);
-	
 	if (hdrCount==0) print("Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set...");	
 	else print("Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set, ignoring " + hdrCount + " lines of header.");
 	/* loading and parsing each line */
