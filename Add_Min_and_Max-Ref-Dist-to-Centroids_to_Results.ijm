@@ -8,7 +8,7 @@
 	v170503 adds a message box with a some description of the required reference file
 	v170504 garbage collection
 	v180323 Cleanup up some redundant code and tried to make macro smarter about removing header (and NaN) rows.
-	v180604 Add option to convert coordinate reference values to "Analyze" pixel centroids by add 0.5 pxiels to X and Y
+	v180604 Add option to convert coordinate reference values to "Analyze" pixel centroids by adding 0.5 pixels to X and Y
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
