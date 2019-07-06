@@ -1,5 +1,10 @@
 /*	This macro determines the minimum and maximum distances for all objects compared to a reference file of XY coordinates.
 	It adds 20 new columns to the results table - which is perhaps a little excessive!
+		Conversions to pixel data based on scale factor: X\(px\), Y\(px\), XM\(px\), YM\(px\), BX\(px\), BY\(px\), Width\(px\), Height\(px\).
+		New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset.
+		New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\).
+		New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY.
+		Scaled distances: MinRefDist \("+unit+"\), CtrRefDist\("+unit+"\), MaxRefDist\("+unit+"\).
 	Text file import is based on an imageJWiki Example "Last modified: 2013/11/28 13:47 by borovec"
 	http://imagejdocu.tudor.lu/doku.php?id=macro:multiple_points
 	Array sorting based on macro example: http://rsb.info.nih.gov/ij/macros/examples/ArraySortingDemo.txt
@@ -8,28 +13,28 @@
 	v170503 adds a message box with a some description of the required reference file
 	v170504 garbage collection
 	v180323 Cleanup up some redundant code and tried to make macro smarter about removing header (and NaN) rows.
-	v180604 Add option to convert coordinate reference values to "Analyze" pixel centroids by adding 0.5 pixels to X and Y
+	v180604 Add option to convert coordinate reference values to "Analyze" pixel centroids by adding 0.5 pixels to X and Y.
+	v190706 Removed unnecessary ROI requirement, fixed unclosed comment area, introduced Table functions, added delimiter test for coordinate file.
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
-
+	requires("1.52a"); /* For table functions */
+	nRes = nResults;
+	if (nRes==0) exit("This macro requires that you have already run Analyze or Particles to obtain object coordinates.");
 	saveSettings(); /* To restore settings at the end */
-	
 	/* Set options for black objects on white background as this works better for publications */
 	run("Options...", "iterations=1 white count=1"); /* Set the background to white */
 	run("Colors...", "foreground=black background=white selection=yellow"); /* Set the preferred colors for these macros */
 	setOption("BlackBackground", false);
-	run("Appearance...", " "); /* Do not use Inverting LUT */
+	run("Appearance...", " "); if(is("Inverting LUT")) run("Invert LUT"); /* do not use Inverting LUT */
 	/* The above should be the defaults but this makes sure (black particles on a white background) http://imagejdocu.tudor.lu/doku.php?id=faq:technical:how_do_i_set_up_imagej_to_deal_with_white_particles_on_a_black_background_by_default
 	*/
 	print("");
 	print("Macro: " + getInfo("macro.filepath"));
-	print("Image analyzed: " + getTitle());	 
-	checkForRoiManager(); /* see functions - if there is no ROI manager it will ask to run Analyze Particles */
-	objects = roiManager("count");
-	run("Select None");
-	if (isNaN(getResult('Pixels',0)) && isNaN(getResult('X',0))) {
-		restoreExit("This macro requires that you have already run Analyze or Particles.");
+	print("Image analyzed: " + getTitle());
+	setBatchMode(true);
+	if (isNaN(getResult('Pixels',0)) && isNaN(getResult('X',0))&& isNaN(getResult('XM',0))) {
+		restoreExit("This macro requires that you have already run Analyze or Particles to obtain object coordinates.");
 	}	
 	getPixelSize(unit, pixelWidth, pixelHeight);
 	lcf=(pixelWidth+pixelHeight)/2; /*---> add here the side size of 1 pixel in the new calibrated units (e.g. lcf=5, if 1 pixel is 5 mm) <---
@@ -50,23 +55,9 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	fileName = File.openDialog("Select the file to import with X and Y pixel coordinates.");
 	allText = File.openAsString(fileName);
 	coordToCtr = getBoolean("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 to X and Y\)", "Convert", "No");
+	start = getTime(); /* used for debugging macro to optimize speed */
 	if (coordToCtr==true) coOrdConv = 0.5;
 	else coOrdConv = 0;
-	if (isNaN(getResult('Pixels',0)) && lcf!=1) {
-		for (i=0 ; i<objects; i++) {
-			setResult("X\(px\)", i, (getResult("X", i))/lcf);
-			setResult("Y\(px\)", i, (getResult("Y", i))/lcf);
-			setResult("XM\(px\)", i, (getResult("XM", i))/lcf);
-			setResult("YM\(px\)", i, (getResult("YM", i))/lcf);
-			setResult("BX\(px\)", i, round((getResult("BX", i))/lcf));
-			setResult("BY\(px\)", i, round((getResult("BY", i))/lcf));
-			setResult("Width\(px\)", i, round((getResult("Width", i))/lcf));
-			setResult("Height\(px\)", i, round((getResult("Height", i))/lcf));
-		}
-		updateResults();
-	}
-	setBatchMode(true);
-	start = getTime(); /* used for debugging macro to optimize speed */
 	if (endsWith(fileName, ".txt")) fileFormat = "txt"; /* for input is in TXT format with tab */
 	else if (endsWith(fileName, ".csv")) fileFormat = "csv"; /* for input is in CSV format */
 	else restoreExit("Selected file is not in a supported format \(.txt or .csv\)");	 /* in case of any other format */
@@ -77,15 +68,18 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	xpoints = newArray(coOrds);
 	ypoints = newArray(coOrds); 
 	for (i = 0; i < (coOrds); i++){ /* loading and parsing each line */
-		if (fileFormat=="csv") line = split(text[i],",");
-		if (fileFormat=="txt") line = split(text[i],"	");
+		if (indexOf(text[i],",")>=0) line = split(text[i],",");
+		else if (indexOf(text[i],"\t")>=0) line = split(text[i],"\t");
+		else if (indexOf(text[i],"|")>=0) line = split(text[i],"|");
+		else if (indexOf(text[i],"0")>=0) line = split(text[i]," ");
+		else restoreExit("No common delimeters found in coordinate file, goodbye.");
 		if (isNaN(parseInt(line[iX]))){ /* Do not test line[iY] is it might not exist */
 			hdrCount += 1;
 		}
 		else {
 			xpoints[i-hdrCount] = parseInt(line[iX]);
 			ypoints[i-hdrCount] = parseInt(line[iY]);
-			xpoints[i-hdrCount] += 0.5; /* 
+			xpoints[i-hdrCount] += 0.5;
 			ypoints[i-hdrCount] += 0.5;
 			Array.print(xpoints);
 			Array.print(ypoints);
@@ -96,6 +90,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		xpoints = Array.trim(xpoints, coOrds);
 		ypoints = Array.trim(ypoints, coOrds);
 	}
+	// print("length of xpoints = ", lengthOf(xpoints));
 	if (hdrCount==0) print("Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set...");	
 	else print("Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set, ignoring " + hdrCount + " lines of header.");
 	/* loading and parsing each line */
@@ -103,24 +98,54 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	Array.getStatistics(ypoints, miny, maxy, meany, stdy);
 	print("Center of Reference Point Set is at x = " + meanx + ", y= " + meany + " \(pixels\).");
 	print("Reference Point Set Range x: " + minx + " - " + maxx + ", y: " + miny + " - " + maxy + " \(pixels\).");
-	
+	/* Pixel coordinates are used, take the opportunity to add them to the results table if they are missing */
+	lcfs = newArray(nRes);
+	Array.fill(lcfs, lcf);
+	Table.setColumn("lcfc", lcfs);
+	if (isNaN(getResult('Pixels',0)) && lcf!=1) {
+		if (isNaN(getResult('X\(px\)',0)) && !isNaN(getResult('X',0))) {
+			Table.applyMacro("Xpx = X/lcfc");
+			Table.applyMacro("Ypx = Y/lcfc");
+			Table.renameColumn("Xpx", "X\(px\)");
+			Table.renameColumn("Ypx", "Y\(px\)");
+		}
+		if (isNaN(getResult('XM\(px\)',0)) && !isNaN(getResult('XM',0))) {
+			Table.applyMacro("XMpx=XM/lcfc");
+			Table.applyMacro("YMpx=YM/lcfc");
+			Table.renameColumn("XMpx", "XM\(px\)");
+			Table.renameColumn("YMpx","YM\(px\)");
+		}
+		if (isNaN(getResult('BX\(px\)',0)) && !isNaN(getResult('BX',0))) {
+			Table.applyMacro("BXpx=d2s(BX/lcfc,0)");
+			Table.applyMacro("BYpx=d2s(BY/lcfc,0)");
+			Table.renameColumn("BXpx","BX\(px\)");
+			Table.renameColumn("BYpx","BY\(px\)");
+		}
+		if (isNaN(getResult('Width\(px\)',0)) && !isNaN(getResult('Width',0))) {
+			Table.applyMacro("Widthpx=Width/lcfc");
+			Table.applyMacro("Heightpx=Height/lcfc");
+			Table.renameColumn("Widthpx","Width\(px\)");
+			Table.renameColumn("Heightpx","Height\(px\)");
+		}
+		Table.deleteColumn("lcfc");
+		updateResults();
+	}	
+	if (isNaN(getResult('Pixels',0)) && lcf!=1) {
+		x1 = Table.getColumn('X\(px\)');
+		y1 = Table.getColumn('Y\(px\)');
+	}
+	else if (isNaN(getResult('Pixels',0)) && lcf==1) {
+		x1 = Table.getColumn('X');  /* for ImageJ Analyze Particles */
+		y1 = Table.getColumn('Y');  /* for ImageJ Analyze Particles */
+	}
+	else {
+		x1 = Table.getColumn('XM',i);  /* for Landini Particles */
+		y1 = Table.getColumn('YM',i);  /* for Landini Particles */
+	}
 	distances = newArray(coOrds);
-	for (i=0 ; i<objects; i++) {
-		showProgress(i, objects);
-		roiManager("select", i);
-		if (isNaN(getResult('Pixels',0)) && lcf!=1) {
-			X1 = getResult("X\(px\)", i);
-			Y1 = getResult("Y\(px\)", i); 
-		}
-		else if (isNaN(getResult('Pixels',0)) && lcf==1) {
-			X1 = getResult('X',i);  /* for ImageJ Analyze Particles */
-			Y1 = getResult('Y',i);  /* for ImageJ Analyze Particles */
-		}
-		else {
-			X1 = getResult('XM',i);  /* for Landini Particles */
-			Y1 = getResult('YM',i);  /* for Landini Particles */
-		}
-		for (j=0 ; j<(lengthOf(xpoints)); j++) distances[j] = sqrt((X1-xpoints[j])*(X1-xpoints[j])+(Y1-ypoints[j])*(Y1-ypoints[j]));
+	for (i=0 ; i<nRes; i++) {
+		showProgress(i, nRes);
+		for (j=0 ; j<(lengthOf(xpoints)); j++) distances[j] = sqrt((x1[i]-xpoints[j])*(x1[i]-xpoints[j])+(y1[i]-ypoints[j])*(y1[i]-ypoints[j]));
 		sortedDistances = Array.copy(distances);
 		Array.sort(sortedDistances);
 		rankPosDist = Array.rankPositions(distances);
@@ -138,10 +163,10 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		}
 		setResult("MinLocX", i, xpoints[k]);
 		setResult("MinLocY", i, ypoints[k]);
-		mda = (180/PI)*atan((Y1-ypoints[k])/((xpoints[k]-X1)));
+		mda = (180/PI)*atan((y1[i]-ypoints[k])/((xpoints[k]-x1[i])));
 		if (mda<0) mda = 180 + mda; /* modify angle to match 0-180 FeretAngle */
 		setResult("MinDistAngle", i, mda);
-		dRef = sqrt((X1-meanx)*(X1-meanx)+(Y1-meany)*(Y1-meany));
+		dRef = sqrt((x1[i]-meanx)*(x1[i]-meanx)+(y1[i]-meany)*(y1[i]-meany));
 		FAngle = getResult("FeretAngle",i);
 		FMinDAngleO = abs(FAngle-mda);
 		if (FMinDAngleO>90) FMinDAngleO = 180 - FMinDAngleO; 
@@ -160,7 +185,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	updateResults();
 	run("Select None");
 	setBatchMode("exit & display"); /* exit batch mode */
-	print(roiManager("count") + " objects analyzed in " + (getTime()-start)/1000 + "s.");
+	print(nRes + " objects analyzed in " + (getTime()-start)/1000 + "s.");
 	print("-----");
 	restoreSettings();
 	showStatus("Minimum and Maximum Reference Distances to Centroids Added to Results");
@@ -168,34 +193,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	run("Collect Garbage"); 
 }
 	/*  ( 8(|)	( 8(|)	All ASC Functions	@@@@@:-)	@@@@@:-)   */
-	
-	function checkForRoiManager() {
-		/* v161109 adds the return of the updated ROI count and also adds dialog if there are already entries just in case . .
-			v180104 only asks about ROIs if there is a mismatch with the results */
-		nROIs = roiManager("count");
-		nRES = nResults; /* Used to check for ROIs:Results mismatch */
-		if(nROIs==0) runAnalyze = true; /* Assumes that ROIs are required and that is why this function is being called */
-		else if(nROIs!=nRES) runAnalyze = getBoolean("There are " + nRES + " results and " + nROIs + " ROIs; do you want to clear the ROI manager and reanalyze?");
-		else runAnalyze = false;
-		if (runAnalyze) {
-			roiManager("reset");
-			Dialog.create("Analysis check");
-			Dialog.addCheckbox("Run Analyze-particles to generate new roiManager values?", true);
-			Dialog.addMessage("This macro requires that all objects have been loaded into the ROI manager.\n \nThere are   " + nRES +"   results.\nThere are   " + nROIs +"   ROIs.");
-			Dialog.show();
-			analyzeNow = Dialog.getCheckbox();
-			if (analyzeNow) {
-				setOption("BlackBackground", false);
-				if (nResults==0)
-					run("Analyze Particles...", "display add");
-				else run("Analyze Particles..."); /* Let user select settings */
-				if (nResults!=roiManager("count"))
-					restoreExit("Results and ROI Manager counts do not match!");
-			}
-			else restoreExit("Goodbye, your previous setting will be restored.");
-		}
-		return roiManager("count"); /* Returns the new count of entries */
-	}
+
 	function restoreExit(message){ /* Make a clean exit from a macro, restoring previous settings */
 		/* 9/9/2017 added Garbage clean up suggested by Luc LaLonde - LBNL */
 		restoreSettings(); /* Restore previous settings before exiting */
