@@ -56,8 +56,6 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	allText = File.openAsString(fileName);
 	coordToCtr = getBoolean("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 to X and Y\)", "Convert", "No");
 	start = getTime(); /* used for debugging macro to optimize speed */
-	if (coordToCtr==true) coOrdConv = 0.5;
-	else coOrdConv = 0;
 	if (endsWith(fileName, ".txt")) fileFormat = "txt"; /* for input is in TXT format with tab */
 	else if (endsWith(fileName, ".csv")) fileFormat = "csv"; /* for input is in CSV format */
 	else restoreExit("Selected file is not in a supported format \(.txt or .csv\)");	 /* in case of any other format */
@@ -79,8 +77,10 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		else {
 			xpoints[i-hdrCount] = parseInt(line[iX]);
 			ypoints[i-hdrCount] = parseInt(line[iY]);
-			xpoints[i-hdrCount] += 0.5;
-			ypoints[i-hdrCount] += 0.5;
+			if (coordToCtr) {
+				xpoints[i-hdrCount] += 0.5;
+				ypoints[i-hdrCount] += 0.5;
+			}
 			Array.print(xpoints);
 			Array.print(ypoints);
 		}
