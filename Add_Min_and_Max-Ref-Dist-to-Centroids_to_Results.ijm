@@ -15,10 +15,19 @@
 	v180323 Cleanup up some redundant code and tried to make macro smarter about removing header (and NaN) rows.
 	v180604 Add option to convert coordinate reference values to "Analyze" pixel centroids by adding 0.5 pixels to X and Y.
 	v190706 Removed unnecessary ROI requirement, fixed unclosed comment area, introduced Table functions, added delimiter test for coordinate file.
+	v190722 Added additional output options, including reverting to imported coordinates. Preferences are saved.
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
 	requires("1.52a"); /* For table functions */
+	getPixelSize(unit, pixelWidth, pixelHeight);
+	userPath = getInfo("user.dir");
+	prefsNameKey = "ascMinMaxRefDistPrefs.";
+	delimiter = "|";
+	prefsAddedColsString = call("ij.Prefs.get", prefsNameKey+"AdedCols", "None");
+	prefsAddedColsString = replace(prefsAddedColsString, "_unit_", unit);
+	prefsCentroids = call("ij.Prefs.get", prefsNameKey+"Centroids", "None");
+	prefsAddedCols = split(prefsAddedColsString,delimiter);
 	nRes = nResults;
 	if (nRes==0) exit("This macro requires that you have already run Analyze or Particles to obtain object coordinates.");
 	saveSettings(); /* To restore settings at the end */
@@ -33,28 +42,38 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	print("Macro: " + getInfo("macro.filepath"));
 	print("Image analyzed: " + getTitle());
 	setBatchMode(true);
-	if (isNaN(getResult('Pixels',0)) && isNaN(getResult('X',0))&& isNaN(getResult('XM',0))) {
+	// tableHeadings = split(Table.headings);
+	tableHeadings = split(String.getResultsHeadings);
+	if (indexOfArray(tableHeadings,"X",-1)<0 && indexOfArray(tableHeadings,"XM",-1)<0 && indexOfArray(tableHeadings,"BX",-1)<0 && indexOfArray(tableHeadings,"X\(px\)",-1)<0 && indexOfArray(tableHeadings,"XM\(px\)",-1)<0 && indexOfArray(tableHeadings,"ROI_BX\(px\)",-1)<0 && indexOfArray(tableHeadings,"mc_X\(px\)",-1)<0)
 		restoreExit("This macro requires that you have already run Analyze or Particles to obtain object coordinates.");
-	}	
-	getPixelSize(unit, pixelWidth, pixelHeight);
 	lcf=(pixelWidth+pixelHeight)/2; /*---> add here the side size of 1 pixel in the new calibrated units (e.g. lcf=5, if 1 pixel is 5 mm) <---
 	*/
+	description1 = "A reference location file with X in column 1 and Y in column 2 is now required\n\(either a tab separated txt file exported by ImageJ or a csv file\).\nPIXELS: The macro assumes that the imported XY values are in pixels.\n - - ";
 	if (lcf!=1) {
 		print("Current image pixel width = " + pixelWidth + " " + unit +".");
 		/* ask for a file to be imported */
-		showMessageWithCancel("XY coordinates in pixels", "A reference location file with X in column 1 and Y in column 2 is now required\n\(either a tab separated txt file exported by ImageJ or a csv file\).\nPIXELS: The macro assumes that the imported XY values are in pixels.\n - - the macro will generate both pixel and scaled information.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 20\(!\) columns:\n   Conversions to pixel data based on scale factor: X\(px\), Y\(px\), XM\(px\), YM\(px\), BX\(px\), BY\(px\), Width\(px\), Height\(px\)\n   New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY\n   Scaled distances: MinRefDist \("+unit+"\), CtrRefDist\("+unit+"\), MaxRefDist\("+unit+"\)");
+		showMessageWithCancel("XY coordinates in pixels",  description1 + "- - The macro will generate both pixel and scaled information.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 20\(!\) columns:\n   Conversions to pixel data based on scale factor: X\(px\), Y\(px\), XM\(px\), YM\(px\), BX\(px\), BY\(px\), Width\(px\), Height\(px\)\n   New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY\n   Scaled distances: MinRefDist \("+unit+"\), CtrRefDist\("+unit+"\), MaxRefDist\("+unit+"\)");
 	}
 	else {
 		print("No scale is set; all data is assumed to be in pixels.");
 		/* ask for a file to be imported */
-		showMessageWithCancel("XY coordinates in pixels", "A reference location file with X in column 1 and Y in column 2 is now required.\n - - either a tab separated txt file exported by ImageJ or a csv file.\nPIXELS: The macro assumes that the imported XY values are in pixels.\n - - Because the image scale is pixels the macro will generate only pixel distances.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 9 columns:\n   New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY\n");
+		showMessageWithCancel("XY coordinates in pixels", description1 + "Because the image scale is pixels the macro will generate only pixel distances.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 9 columns:\n   New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY\n");
 	}
-	if (isNaN(getResult('X',0)) && lcf!=1) {
+	if (indexOfArray(tableHeadings,"X",-1)<0 && lcf!=1)
 		print("As coordinates from Particles4-8 are never scaled three scaled \(" + unit + "\) columns will be added at the end.");
-	}
 	fileName = File.openDialog("Select the file to import with X and Y pixel coordinates.");
 	allText = File.openAsString(fileName);
-	coordToCtr = getBoolean("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 to X and Y\)", "Convert", "No");
+	Dialog.create("Pixel center correction");
+		Dialog.addMessage("Exported pixel coordinates use the top left the pixel\n but analyzed object coordinates are based on the center of the pixel.\n To correct for this you can add 0.5 to the imported X and Y coordinates.\nThe second option reverts the discovered coordinates to the original values\nwhen saving to the Results table \(MinLocX&Y and MaxLocX&Y only\).")
+		Dialog.addCheckbox("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 to X and Y\)", true);
+		Dialog.addCheckbox("...then revert Min/Max output coordinates to imported values? \(Subtract 0.5 from X and Y\)", true);
+		Dialog.show;
+		coordToCtr = Dialog.getCheckbox();
+		revertToImportedXY = Dialog.getCheckbox();
+	if (!coordToCtr && revertToImportedXY) {
+		areUShure = getBoolean("Are you sure you want to revert the unconverted coordinates?");
+		if (!areUShure) revertToImportedXY = false;
+	}
 	start = getTime(); /* used for debugging macro to optimize speed */
 	if (endsWith(fileName, ".txt")) fileFormat = "txt"; /* for input is in TXT format with tab */
 	else if (endsWith(fileName, ".csv")) fileFormat = "csv"; /* for input is in CSV format */
@@ -81,8 +100,8 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 				xpoints[i-hdrCount] += 0.5;
 				ypoints[i-hdrCount] += 0.5;
 			}
-			Array.print(xpoints);
-			Array.print(ypoints);
+			// Array.print(xpoints);
+			// Array.print(ypoints);
 		}
 	}
 	if (hdrCount > 0){
@@ -101,27 +120,30 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	/* Pixel coordinates are used, take the opportunity to add them to the results table if they are missing */
 	lcfs = newArray(nRes);
 	Array.fill(lcfs, lcf);
-	Table.setColumn("lcfc", lcfs);
-	if (isNaN(getResult('Pixels',0)) && lcf!=1) {
-		if (isNaN(getResult('X\(px\)',0)) && !isNaN(getResult('X',0))) {
+	Table.setColumn("lcfc", lcfs); /* just a trick to use a variable in a table macro in anticipation of using variables in future imageJ versions */
+	pxXCoords = newArray("");
+	pxColumns = newArray("");
+	/* generate new pixel columns if not in Results table */
+	if (indexOfArray(tableHeadings,"Pixels",-1)<0 && lcf!=1) {
+		if (indexOfArray(tableHeadings,"X\(px\)",-1)<0 && indexOfArray(tableHeadings,"X",-1)>=0) {
 			Table.applyMacro("Xpx = X/lcfc");
 			Table.applyMacro("Ypx = Y/lcfc");
 			Table.renameColumn("Xpx", "X\(px\)");
 			Table.renameColumn("Ypx", "Y\(px\)");
 		}
-		if (isNaN(getResult('XM\(px\)',0)) && !isNaN(getResult('XM',0))) {
+		if (indexOfArray(tableHeadings,"XM\(px\)",-1)<0 && indexOfArray(tableHeadings,"XM",-1)>=0)  {
 			Table.applyMacro("XMpx=XM/lcfc");
 			Table.applyMacro("YMpx=YM/lcfc");
 			Table.renameColumn("XMpx", "XM\(px\)");
 			Table.renameColumn("YMpx","YM\(px\)");
 		}
-		if (isNaN(getResult('BX\(px\)',0)) && !isNaN(getResult('BX',0))) {
+		if (indexOfArray(tableHeadings,"BX\(px\)",-1)<0 && indexOfArray(tableHeadings,"BX",-1)>=0)  {
 			Table.applyMacro("BXpx=d2s(BX/lcfc,0)");
 			Table.applyMacro("BYpx=d2s(BY/lcfc,0)");
 			Table.renameColumn("BXpx","BX\(px\)");
 			Table.renameColumn("BYpx","BY\(px\)");
 		}
-		if (isNaN(getResult('Width\(px\)',0)) && !isNaN(getResult('Width',0))) {
+		if (indexOfArray(tableHeadings,"Width\(px\)",-1)<0 && indexOfArray(tableHeadings,"Width",-1)>=0)  {
 			Table.applyMacro("Widthpx=Width/lcfc");
 			Table.applyMacro("Heightpx=Height/lcfc");
 			Table.renameColumn("Widthpx","Width\(px\)");
@@ -129,20 +151,109 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		}
 		Table.deleteColumn("lcfc");
 		updateResults();
-	}	
-	if (isNaN(getResult('Pixels',0)) && lcf!=1) {
-		x1 = Table.getColumn('X\(px\)');
-		y1 = Table.getColumn('Y\(px\)');
 	}
-	else if (isNaN(getResult('Pixels',0)) && lcf==1) {
-		x1 = Table.getColumn('X');  /* for ImageJ Analyze Particles */
-		y1 = Table.getColumn('Y');  /* for ImageJ Analyze Particles */
-	}
+	if(!isNaN(getResult("X\(px\)",0))) pxXCoords = Array.concat(pxXCoords,"X\(px\)");
+	if(!isNaN(getResult("XM\(px\)",0))) pxXCoords = Array.concat(pxXCoords,"XM\(px\)");
+	if(!isNaN(getResult("BX\(px\)",0))) pxXCoords = Array.concat(pxXCoords,"BX\(px\)");
+	if(!isNaN(getResult("X",0))) pxXCoords = Array.concat(pxXCoords,"X");
+	if(!isNaN(getResult("XM",0))) pxXCoords = Array.concat(pxXCoords,"XM");
+	if(!isNaN(getResult("BX",0))) pxXCoords = Array.concat(pxXCoords,"BX");
+	/* Also add coordinates based on other ASC macros */
+	if(!isNaN(getResult("ROI_BX\(px\)",0))) pxXCoords = Array.concat(pxXCoords,"ROI_BX\(px\)");
+	if(!isNaN(getResult("ROI_MX\(px\)",0))) pxXCoords = Array.concat(pxXCoords,"ROI_MX\(px\)");
+	if(!isNaN(getResult("mc_X\(px\)",0))) pxXCoords = Array.concat(pxXCoords,"mc_X\(px\)");
+	if (pxXCoords[0] == "") pxXCoords = Array.slice(pxXCoords,1,pxXCoords.length);
+	newDistCols = newArray("MinDist\(px\)","MinLocX","MinLocY","MinDistAngle","Feret_MinDAngle_Offset","DistToRefCtr\(px\)","MaxDist\(px\)","MaxLocX","MaxLocY");
+	newDistColsUnit = newArray("MinRefDist" + "\(" + unit + "\)","CtrRefDist" + "\(" + unit + "\)","MaxRefDist" + "\(" + unit + "\)");
+	if (lcf!=1) newDistCols = Array.concat(newDistCols,newDistColsUnit);
+	addedColsCheck = newArray(newDistCols.length);
+	if (prefsAddedColsString=="None") Array.fill(addedColsCheck,true);
 	else {
-		x1 = Table.getColumn('XM',i);  /* for Landini Particles */
-		y1 = Table.getColumn('YM',i);  /* for Landini Particles */
+		Array.fill(addedColsCheck,false);
+		for (i=0 ; i<prefsAddedCols.length; i++){
+			newColRank = indexOfArray(newDistCols,prefsAddedCols[i],-1);
+			if (newColRank>=0) addedColsCheck[newColRank] = true;
+		}
 	}
+	/* Choose centroids for analysis */
+	iPxC = indexOfArray(pxXCoords,prefsCentroids,0);
+	Dialog.create("Choose object coordinates");
+		Dialog.addRadioButtonGroup("Coordinate sets based on X \(Y will match\):",pxXCoords,pxXCoords.length,1,pxXCoords[iPxC]);
+		Dialog.addCheckboxGroup(4, round(newDistCols.length/4)+1, newDistCols, addedColsCheck);
+		Dialog.addCheckbox("Select all measurements \(override above\)", false);
+		Dialog.show();
+		coordChoice = Dialog.getRadioButton();
+		addedCols = newArray("");
+		for (i=0; i<newDistCols.length; i++)
+			if (Dialog.getCheckbox()) addedCols = Array.concat(addedCols,newDistCols[i]);
+		if (addedCols[0]=="") addedCols = Array.slice(addedCols,1,addedCols.length);
+		if (Dialog.getCheckbox()) addedCols = newDistCols;
+	if (coordChoice == "X") {
+		x1 = Table.getColumn("X");
+		y1 = Table.getColumn("Y");
+	}
+	else if (coordChoice == "XM") {
+		x1 = Table.getColumn("XM");
+		y1 = Table.getColumn("YM");
+	}
+	else if (coordChoice == "BX") {
+		x1 = Table.getColumn("BX");
+		y1 = Table.getColumn("BY");
+	}
+	else if (coordChoice == "X\(px\)") {
+		x1 = Table.getColumn("X\(px\)");
+		y1 = Table.getColumn("Y\(px\)");
+	}
+	else if (coordChoice == "XM\(px\)") {
+		x1 = Table.getColumn("XM\(px\)");
+		y1 = Table.getColumn("YM\(px\)");
+	}
+	else if (coordChoice == "BX\(px\)") {
+		x1 = Table.getColumn("BX\(px\)");
+		y1 = Table.getColumn("BY\(px\)");
+	}
+	else if (coordChoice == "ROI_BX\(px\)") {
+		x1 = Table.getColumn("ROI_BX\(px\)");
+		y1 = Table.getColumn("ROI_BY\(px\)");
+	}
+	else if (coordChoice == "ROI_MX\(px\)") {
+		x1 = Table.getColumn("ROI_MX\(px\)");
+		y1 = Table.getColumn("ROI_MY\(px\)");
+	}
+	else if (coordChoice == "mc_X\(px\)") {
+		x1 = Table.getColumn("mc_X\(px\)");
+		y1 = Table.getColumn("mc_Y\(px\)");
+	}
+	else restoreExit("No centroids selected, goodbye.");
+	addedColsString = arrayToString(addedCols,delimiter);
+	/* Remove units */
+	addedColsString = replace(addedColsString, unit, "_unit_");
+	call("ij.Prefs.set", prefsNameKey+"AdedCols", addedColsString);
+	call("ij.Prefs.set", prefsNameKey+"Centroids", coordChoice);
 	distances = newArray(coOrds);
+	FAngles = Table.getColumn("FeretAngle");
+	/* Choose new column output before loop */
+	if (indexOfArray(addedCols,"MinDist\(px\)",-1)>=0) minDistC = true;
+	else minDistC = false;
+	if (indexOfArray(addedCols,"MinLocX",-1)>=0) minLocC = true;
+	else minLocC = false;
+	if (indexOfArray(addedCols,"MinDistAngle",-1)>=0) minDistAngleC = true;
+	else minDistAngleC = false;
+	if (indexOfArray(addedCols,"Feret_MinDAngle_Offset",-1)>=0) feret_MinDAngle_OffsetC = true;
+	else feret_MinDAngle_OffsetC = false;
+	if (indexOfArray(addedCols,"DistToRefCtr\(px\)",-1)>=0) distToRefCtrC = true;
+	else distToRefCtrC = false;
+	if (indexOfArray(addedCols,"MaxDist",-1)>=0) maxDistC = true;
+	else maxDistC = false;
+	if (indexOfArray(addedCols,"MaxLocX",-1)>=0) maxLocC = true;
+	else maxLocC = true;
+	if (indexOfArray(addedCols,"MinRefDist" + "\(" + unit + "\)",-1)>=0) minRefDistC = true;
+	else minRefDistC = false;
+	if (indexOfArray(addedCols,"CtrRefDist" + "\(" + unit + "\)",-1)>=0) ctrRefDistC = true;
+	else ctrRefDistC = false;
+	if (indexOfArray(addedCols,"MaxRefDist" + "\(" + unit + "\)",-1)>=0) maxRefDistC = true;
+	else maxRefDistC = false;
+	/* End of new column selection */
 	for (i=0 ; i<nRes; i++) {
 		showProgress(i, nRes);
 		for (j=0 ; j<(lengthOf(xpoints)); j++) distances[j] = sqrt((x1[i]-xpoints[j])*(x1[i]-xpoints[j])+(y1[i]-ypoints[j])*(y1[i]-ypoints[j]));
@@ -154,32 +265,46 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		/* nearest neighbor alternative */
 		if (minD==0) {
 			minD = sortedDistances[1];
-			setResult("MinDist\(px\)", i, minD);
 			k = rankPosDist[1];
 		}
 		else {
-			setResult("MinDist\(px\)", i, minD);
 			k = rankPosDist[0];
 		}
-		setResult("MinLocX", i, xpoints[k]);
-		setResult("MinLocY", i, ypoints[k]);
+		if (minDistC) setResult("MinDist\(px\)", i, minD);
+		if (minLocC) {
+			if (revertToImportedXY) {
+				setResult("MinLocX", i, d2s(xpoints[k]-0.5,0));
+				setResult("MinLocY", i, d2s(ypoints[k]-0.5,0));
+			}
+			else {
+				setResult("MinLocX", i, d2s(xpoints[k],1));
+				setResult("MinLocY", i, d2s(ypoints[k],1));
+			}
+		}
 		mda = (180/PI)*atan((y1[i]-ypoints[k])/((xpoints[k]-x1[i])));
 		if (mda<0) mda = 180 + mda; /* modify angle to match 0-180 FeretAngle */
-		setResult("MinDistAngle", i, mda);
+		if (minDistAngleC) setResult("MinDistAngle", i, mda);
 		dRef = sqrt((x1[i]-meanx)*(x1[i]-meanx)+(y1[i]-meany)*(y1[i]-meany));
-		FAngle = getResult("FeretAngle",i);
-		FMinDAngleO = abs(FAngle-mda);
+		FMinDAngleO = abs(FAngles[i]-mda);
 		if (FMinDAngleO>90) FMinDAngleO = 180 - FMinDAngleO; 
-		setResult("Feret_MinDAngle_Offset", i, FMinDAngleO);
-		setResult("DistToRefCtr\(px\)", i, dRef);
-		setResult("MaxDist\(px\)", i, maxD);
-		l = rankPosDist[lengthOf(distances)-1];
-		setResult("MaxLocX", i, xpoints[l]);
-		setResult("MaxLocY", i, ypoints[l]);
+		if (feret_MinDAngle_OffsetC) setResult("Feret_MinDAngle_Offset", i, FMinDAngleO);
+		if (distToRefCtrC) setResult("DistToRefCtr\(px\)", i, dRef);
+		if (maxDistC) setResult("MaxDist\(px\)", i, maxD);
+		iEnd = rankPosDist[lengthOf(distances)-1];
+		if (maxLocC) {
+			if (revertToImportedXY) {
+				setResult("MaxLocX", i, d2s(xpoints[iEnd]-0.5,0));
+				setResult("MaxLocY", i, d2s(ypoints[iEnd]-0.5,0));
+			}
+			else {
+				setResult("MaxLocX", i, d2s(xpoints[iEnd],1));
+				setResult("MaxLocY", i, d2s(ypoints[iEnd],1));
+			}
+		}
 		if (lcf!=1) {
-			setResult('MinRefDist' + "\(" + unit + "\)", i, minD*lcf);
-			setResult('CtrRefDist' + "\(" + unit + "\)", i, dRef*lcf);
-			setResult('MaxRefDist' + "\(" + unit + "\)", i, maxD*lcf);
+			if (minRefDistC) setResult('MinRefDist' + "\(" + unit + "\)", i, minD*lcf);
+			if (ctrRefDistC) setResult('CtrRefDist' + "\(" + unit + "\)", i, dRef*lcf);
+			if (maxRefDistC) setResult('MaxRefDist' + "\(" + unit + "\)", i, maxD*lcf);
 		}
 	}
 	updateResults();
@@ -193,7 +318,28 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	run("Collect Garbage"); 
 }
 	/*  ( 8(|)	( 8(|)	All ASC Functions	@@@@@:-)	@@@@@:-)   */
-
+	
+	function arrayToString(array,delimiters){
+		/* 1st version April 2019 PJL
+			v190722 Modified to handle zero length array */
+		string = "";
+		for (i=0; i<array.length; i++){
+			if (i==0) string += array[0];
+			else  string = string + delimiters + array[i];
+		}
+		return string;
+	}
+	function indexOfArray(array, value, default) {
+		/* v190423 Adds "default" parameter (use -1 for backwards compatibility). Returns only first found value */
+		index = default;
+		for (i=0; i<lengthOf(array); i++){
+			if (array[i]==value) {
+				index = i;
+				i = lengthOf(array);
+			}
+		}
+	  return index;
+	}
 	function restoreExit(message){ /* Make a clean exit from a macro, restoring previous settings */
 		/* 9/9/2017 added Garbage clean up suggested by Luc LaLonde - LBNL */
 		restoreSettings(); /* Restore previous settings before exiting */
