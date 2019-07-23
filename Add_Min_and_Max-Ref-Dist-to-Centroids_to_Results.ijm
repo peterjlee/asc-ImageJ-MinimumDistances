@@ -42,31 +42,33 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	print("Macro: " + getInfo("macro.filepath"));
 	print("Image analyzed: " + getTitle());
 	setBatchMode(true);
-	// tableHeadings = split(Table.headings);
 	tableHeadings = split(String.getResultsHeadings);
 	if (indexOfArray(tableHeadings,"X",-1)<0 && indexOfArray(tableHeadings,"XM",-1)<0 && indexOfArray(tableHeadings,"BX",-1)<0 && indexOfArray(tableHeadings,"X\(px\)",-1)<0 && indexOfArray(tableHeadings,"XM\(px\)",-1)<0 && indexOfArray(tableHeadings,"ROI_BX\(px\)",-1)<0 && indexOfArray(tableHeadings,"mc_X\(px\)",-1)<0)
 		restoreExit("This macro requires that you have already run Analyze or Particles to obtain object coordinates.");
 	lcf=(pixelWidth+pixelHeight)/2; /*---> add here the side size of 1 pixel in the new calibrated units (e.g. lcf=5, if 1 pixel is 5 mm) <---
 	*/
-	description1 = "A reference location file with X in column 1 and Y in column 2 is now required\n\(either a tab separated txt file exported by ImageJ or a csv file\).\nPIXELS: The macro assumes that the imported XY values are in pixels.\n - - ";
+	description1 = "Results Table coordinates assumed to be in " + unit + ".\n     A reference location file with X in column 1 and Y in column 2 is now required\n     \(either a tab separated txt file exported by ImageJ or a csv file\).\n \nPIXELS: The macro assumes that the imported XY values are in pixels.\n     ";
+	importXY = "To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n";
+	zeroAtTop = "ZERO Y AT TOP: Zero Y should be at the top of the image.\n     This is OPPOSITE to the current ImageJ default XY export setting.";
 	if (lcf!=1) {
 		print("Current image pixel width = " + pixelWidth + " " + unit +".");
 		/* ask for a file to be imported */
-		showMessageWithCancel("XY coordinates in pixels",  description1 + "- - The macro will generate both pixel and scaled information.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 20\(!\) columns:\n   Conversions to pixel data based on scale factor: X\(px\), Y\(px\), XM\(px\), YM\(px\), BX\(px\), BY\(px\), Width\(px\), Height\(px\)\n   New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY\n   Scaled distances: MinRefDist \("+unit+"\), CtrRefDist\("+unit+"\), MaxRefDist\("+unit+"\)");
+		showMessageWithCancel(description1 + "      The macro will generate both pixel and scaled information.\n \n" + zeroAtTop + "\n \n" + importXY + "\n \nThe macro adds the following conversions to pixel data based on 1 pixel = " + lcf + " " + unit + ":\n     X\(px\), Y\(px\), XM\(px\), YM\(px\), BX\(px\), BY\(px\), Width\(px\), Height\(px\)\n");
 	}
 	else {
 		print("No scale is set; all data is assumed to be in pixels.");
 		/* ask for a file to be imported */
-		showMessageWithCancel("XY coordinates in pixels", description1 + "Because the image scale is pixels the macro will generate only pixel distances.\nZERO Y AT TOP: Zero Y should be at the top of the image\n - - this is OPPOSITE to the current ImageJ default XY export setting.\n - - To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n \nThe macro adds the following 9 columns:\n   New minimum distance measurements: MinDist\(px\), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset\n   New minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   New maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY\n");
+		showMessageWithCancel(description1 + "Because the image scale is pixels the macro will generate only pixel distances.\n \n" + zeroAtTop + "\n \n" + importXY);
 	}
 	if (indexOfArray(tableHeadings,"X",-1)<0 && lcf!=1)
 		print("As coordinates from Particles4-8 are never scaled three scaled \(" + unit + "\) columns will be added at the end.");
 	fileName = File.openDialog("Select the file to import with X and Y pixel coordinates.");
 	allText = File.openAsString(fileName);
 	Dialog.create("Pixel center correction");
-		Dialog.addMessage("Exported pixel coordinates use the top left the pixel\n but analyzed object coordinates are based on the center of the pixel.\n To correct for this you can add 0.5 to the imported X and Y coordinates.\nThe second option reverts the discovered coordinates to the original values\nwhen saving to the Results table \(MinLocX&Y and MaxLocX&Y only\).")
-		Dialog.addCheckbox("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 to X and Y\)", true);
-		Dialog.addCheckbox("...then revert Min/Max output coordinates to imported values? \(Subtract 0.5 from X and Y\)", true);
+		Dialog.addMessage("Exported pixel coordinates use the top left the pixel but analyzed object coordinates\nare based on the center of the pixel.\n \nTo correct for this you can add 0.5 pixels to the imported X and Y coordinates.")
+		Dialog.addCheckbox("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 pixels to X and Y\)", true);
+		Dialog.addMessage("Subsequently revert the discovered MinLoc/MaxLoc coordinates to match imported values\nwhen saving to the Results table \(MinLoc X&Y and MaxLoc X&Y only\).")
+		Dialog.addCheckbox("Revert new MinLoc/MaxLoc coordinates to match imported values? \(Subtract 0.5 pixels from X and Y\)", true);
 		Dialog.show;
 		coordToCtr = Dialog.getCheckbox();
 		revertToImportedXY = Dialog.getCheckbox();
@@ -74,7 +76,6 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		areUShure = getBoolean("Are you sure you want to revert the unconverted coordinates?");
 		if (!areUShure) revertToImportedXY = false;
 	}
-	start = getTime(); /* used for debugging macro to optimize speed */
 	if (endsWith(fileName, ".txt")) fileFormat = "txt"; /* for input is in TXT format with tab */
 	else if (endsWith(fileName, ".csv")) fileFormat = "csv"; /* for input is in CSV format */
 	else restoreExit("Selected file is not in a supported format \(.txt or .csv\)");	 /* in case of any other format */
@@ -100,8 +101,6 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 				xpoints[i-hdrCount] += 0.5;
 				ypoints[i-hdrCount] += 0.5;
 			}
-			// Array.print(xpoints);
-			// Array.print(ypoints);
 		}
 	}
 	if (hdrCount > 0){
@@ -109,14 +108,15 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		xpoints = Array.trim(xpoints, coOrds);
 		ypoints = Array.trim(ypoints, coOrds);
 	}
-	// print("length of xpoints = ", lengthOf(xpoints));
-	if (hdrCount==0) print("Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set...");	
-	else print("Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set, ignoring " + hdrCount + " lines of header.");
+	importReport1 = "Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set";
+	if (hdrCount==0) print(importReport1);	
+	else print(importReport1 + ", ignoring " + hdrCount + " lines of header.");
 	/* loading and parsing each line */
 	Array.getStatistics(xpoints, minx, maxx, meanx, stdx);
 	Array.getStatistics(ypoints, miny, maxy, meany, stdy);
-	print("Center of Reference Point Set is at x = " + meanx + ", y= " + meany + " \(pixels\).");
-	print("Reference Point Set Range x: " + minx + " - " + maxx + ", y: " + miny + " - " + maxy + " \(pixels\).");
+	importReport2 = "Center of Reference Point Set is at x = " + meanx + ", y= " + meany + " \(pixels\).\n";
+	importReport3 = "Reference Point Set Range x: " + minx + " - " + maxx + ", y: " + miny + " - " + maxy + " \(pixels\).";
+	print(importReport2,importReport3);
 	/* Pixel coordinates are used, take the opportunity to add them to the results table if they are missing */
 	lcfs = newArray(nRes);
 	Array.fill(lcfs, lcf);
@@ -178,9 +178,15 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	/* Choose centroids for analysis */
 	iPxC = indexOfArray(pxXCoords,prefsCentroids,0);
 	Dialog.create("Choose object coordinates");
+		optionalMeasurements = "Choose new measurements to add to " + Table.title + ":\n   Minimum distance measurement: MinDist\(px\)\n   Coordinates of nearest reference points MinLocX, MinLocY\n   Directions: MinDistAngle, Feret_MinDAngle_Offset\n   Minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   Maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY.";
+		optionalScaled = "\n   Calibrated distances: MinRefDist \("+unit+"\), CtrRefDist \("+unit+"\), MaxRefDist \("+unit+"\).";
+		if (lcf!=1) optionalMeasurements += optionalScaled;
 		Dialog.addRadioButtonGroup("Coordinate sets based on X \(Y will match\):",pxXCoords,pxXCoords.length,1,pxXCoords[iPxC]);
+		Dialog.addMessage(optionalMeasurements);
 		Dialog.addCheckboxGroup(4, round(newDistCols.length/4)+1, newDistCols, addedColsCheck);
 		Dialog.addCheckbox("Select all measurements \(override above\)", false);
+		Dialog.addString("Optional prefix to add to new measurement column labels","");
+		Dialog.addString("Optional suffix to append to new measurement column labels","");
 		Dialog.show();
 		coordChoice = Dialog.getRadioButton();
 		addedCols = newArray("");
@@ -188,6 +194,9 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 			if (Dialog.getCheckbox()) addedCols = Array.concat(addedCols,newDistCols[i]);
 		if (addedCols[0]=="") addedCols = Array.slice(addedCols,1,addedCols.length);
 		if (Dialog.getCheckbox()) addedCols = newDistCols;
+		labelPrefix = Dialog.getString;
+		labelSuffix = Dialog.getString;
+	// start = getTime(); /* Start after last dialog: used for debugging macro to optimize speed */
 	if (coordChoice == "X") {
 		x1 = Table.getColumn("X");
 		y1 = Table.getColumn("Y");
@@ -226,6 +235,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	}
 	else restoreExit("No centroids selected, goodbye.");
 	addedColsString = arrayToString(addedCols,delimiter);
+	allTableHeadingsString = Table.headings;
 	/* Remove units */
 	addedColsString = replace(addedColsString, unit, "_unit_");
 	call("ij.Prefs.set", prefsNameKey+"AdedCols", addedColsString);
@@ -308,12 +318,19 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		}
 	}
 	updateResults();
+	allNewTableHeadingsString = substring(Table.headings,lengthOf(allTableHeadingsString));
+	allNewTableHeadings = split(allNewTableHeadingsString);
+	if (labelPrefix!="" || labelSuffix!=""){
+		for (i=0; i<allNewTableHeadings.length; i++) {
+			Table.renameColumn(allNewTableHeadings[i], labelPrefix+allNewTableHeadings[i]+labelSuffix);
+		}
+	}
 	run("Select None");
 	setBatchMode("exit & display"); /* exit batch mode */
-	print(nRes + " objects analyzed in " + (getTime()-start)/1000 + "s.");
+	// print(nRes + " objects analyzed in " + (getTime()-start)/1000 + "s.");
 	print("-----");
 	restoreSettings();
-	showStatus("Minimum and Maximum Reference Distances to Centroids Added to Results");
+	showStatus(nRes + " min & max distances from reference coords to centroids added to results");
 	beep(); wait(300); beep(); wait(300); beep();
 	run("Collect Garbage"); 
 }
