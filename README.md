@@ -14,7 +14,7 @@ ZERO Y AT TOP: Zero Y should be at the top of the image<br />
 &nbsp;&nbsp;&nbsp;Minimum distances to the center (based on mean of coordinates) of the reference set.<br />
 &nbsp;&nbsp;&nbsp;Angle of minimum distance direction (degrees).<br />
 &nbsp;&nbsp;&nbsp;Angular offset of minimum distance angle from Feret angle.</p>
-&nbsp;&nbsp;&nbsp;The added columns can be relabelled with a global prefix and/or suffix.<br />
+&nbsp;&nbsp;&nbsp;The added columns can be relabeled with a global prefix and/or suffix.<br />
   <p>If the image is scaled, additional columns of &quot;unscaled&quot; pixel values will be added.</p>
     <p>The minimum and maximum distance lines can be drawn as overlays.</p>
 <p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/Centroid-Intfc_Dist_Menu3_LCF_v190723b_Lines_PAL.png" alt="Color Coder example for autoprefs version using asc-silver LUT" height="326" /> </p>
