@@ -16,11 +16,13 @@
 	v180604 Add option to convert coordinate reference values to "Analyze" pixel centroids by adding 0.5 pixels to X and Y.
 	v190706 Removed unnecessary ROI requirement, fixed unclosed comment area, introduced Table functions, added delimiter test for coordinate file.
 	v190722 Added additional output options, including reverting to imported coordinates. Preferences are saved.
+	v190723 New table columns can be relabeled using a global prefix and/or suffix. v190723b Min and Lax lines can be drawn as overlays.
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
 	requires("1.52a"); /* For table functions */
 	getPixelSize(unit, pixelWidth, pixelHeight);
+	imageTitle = getTitle();
 	userPath = getInfo("user.dir");
 	prefsNameKey = "ascMinMaxRefDistPrefs.";
 	delimiter = "|";
@@ -181,13 +183,22 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		optionalMeasurements = "Choose new measurements to add to " + Table.title + ":\n   Minimum distance measurement: MinDist\(px\)\n   Coordinates of nearest reference points MinLocX, MinLocY\n   Directions: MinDistAngle, Feret_MinDAngle_Offset\n   Minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   Maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY.";
 		optionalScaled = "\n   Calibrated distances: MinRefDist \("+unit+"\), CtrRefDist \("+unit+"\), MaxRefDist \("+unit+"\).";
 		if (lcf!=1) optionalMeasurements += optionalScaled;
-		Dialog.addRadioButtonGroup("Coordinate sets based on X \(Y will match\):",pxXCoords,pxXCoords.length,1,pxXCoords[iPxC]);
+		Dialog.addMessage("Reference source: " + coOrds + " imported coordinates");
+		Dialog.addRadioButtonGroup("Select object coordinate set in Results Table \(Y will match\):",pxXCoords,round(pxXCoords.length/4),4,pxXCoords[iPxC]);
 		Dialog.addMessage(optionalMeasurements);
 		Dialog.addCheckboxGroup(4, round(newDistCols.length/4)+1, newDistCols, addedColsCheck);
 		Dialog.addCheckbox("Select all measurements \(override above\)", false);
 		Dialog.addString("Optional prefix to add to new measurement column labels","");
 		Dialog.addString("Optional suffix to append to new measurement column labels","");
-		Dialog.show();
+		colorChoice = newArray("white", "black", "off-white", "off-black", "light_gray", "gray", "dark_gray", "red", "pink", "green", "blue", "yellow", "orange", "garnet", "gold", "aqua_modern", "blue_accent_modern", "blue_dark_modern", "blue_modern", "gray_modern", "green_dark_modern", "green_modern", "orange_modern", "pink_modern", "purple_modern", "jazzberry_jam", "red_N_modern", "red_modern", "tan_modern", "violet_modern", "yellow_modern", "Radical Red", "Wild Watermelon", "Outrageous Orange", "Supernova Orange","Atomic Tangerine", "Neon Carrot", "Sunglow", "Laser Lemon", "Electric Lime", "Screamin' Green", "Magic Mint", "Blizzard Blue", "Dodger Blue", "Shocking Pink", "Razzle Dazzle Rose", "Hot Magenta");
+		grayChoice = newArray("white", "black", "light_gray", "gray", "dark_gray");
+		Dialog.addCheckbox("Draw overlay lines from centroid to nearest reference point?", false);
+		Dialog.addChoice("Line color to minimum:", colorChoice, colorChoice[9]);
+		Dialog.addNumber("Line width to minimum",1);
+		Dialog.addCheckbox("Draw overlay lines from centroid to furthest reference point?", false);
+		Dialog.addChoice("Line color to maximum:", colorChoice, colorChoice[7]);
+		Dialog.addNumber("Line width to maximum",1);
+	Dialog.show();
 		coordChoice = Dialog.getRadioButton();
 		addedCols = newArray("");
 		for (i=0; i<newDistCols.length; i++)
@@ -196,6 +207,12 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		if (Dialog.getCheckbox()) addedCols = newDistCols;
 		labelPrefix = Dialog.getString;
 		labelSuffix = Dialog.getString;
+		drawMinLine = Dialog.getCheckbox;
+		minLineColor = Dialog.getChoice;
+		minLineWidth = Dialog.getNumber;
+		drawMaxLine = Dialog.getCheckbox;
+		maxLineColor = Dialog.getChoice;
+		maxLineWidth = Dialog.getNumber;
 	// start = getTime(); /* Start after last dialog: used for debugging macro to optimize speed */
 	if (coordChoice == "X") {
 		x1 = Table.getColumn("X");
@@ -318,10 +335,28 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		}
 	}
 	updateResults();
-	allNewTableHeadingsString = substring(Table.headings,lengthOf(allTableHeadingsString));
+	selectWindow(imageTitle);
+	if (drawMaxLine) {
+		setColorFromColorName(maxLineColor);
+		setLineWidth(maxLineWidth);
+		for (i=0; i<nRes; i++)
+			Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MaxLocX", i),getResult("MaxLocY",i));
+		Overlay.show;
+	}
+	if (drawMinLine) {
+		setColorFromColorName(minLineColor);
+		setLineWidth(minLineWidth);
+		for (i=0; i<nRes; i++)
+			Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MinLocX", i),getResult("MinLocY",i));
+		Overlay.show;
+	}
+	Overlay.show;
+	allTableHeadingsString = Table.headings;
+	allNewTableHeadingsString = substring(allTableHeadingsString,lengthOf(allTableHeadingsString));
 	allNewTableHeadings = split(allNewTableHeadingsString);
 	if (labelPrefix!="" || labelSuffix!=""){
 		for (i=0; i<allNewTableHeadings.length; i++) {
+			if (indexOf(allTableHeadingsString,labelPrefix+allNewTableHeadings[i]+labelSuffix)>=0) restoreExit(labelPrefix+allNewTableHeadings[i]+labelSuffix + " already exists, column relabeling cannot continue, goodbye");
 			Table.renameColumn(allNewTableHeadings[i], labelPrefix+allNewTableHeadings[i]+labelSuffix);
 		}
 	}
@@ -363,4 +398,69 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		setBatchMode("exit & display"); /* Probably not necessary if exiting gracefully but otherwise harmless */
 		run("Collect Garbage");
 		exit(message);
+	}
+	function getColorArrayFromColorName(colorName) {
+		/* v180828 added Fluorescent Colors
+		   v181017-8 added off-white and off-black for use in gif transparency and also added safe exit if no color match found
+		*/
+		if (colorName == "white") cA = newArray(255,255,255);
+		else if (colorName == "black") cA = newArray(0,0,0);
+		else if (colorName == "off-white") cA = newArray(245,245,245);
+		else if (colorName == "off-black") cA = newArray(10,10,10);
+		else if (colorName == "light_gray") cA = newArray(200,200,200);
+		else if (colorName == "gray") cA = newArray(127,127,127);
+		else if (colorName == "dark_gray") cA = newArray(51,51,51);
+		else if (colorName == "off-black") cA = newArray(10,10,10);
+		else if (colorName == "light_gray") cA = newArray(200,200,200);
+		else if (colorName == "gray") cA = newArray(127,127,127);
+		else if (colorName == "dark_gray") cA = newArray(51,51,51);
+		else if (colorName == "red") cA = newArray(255,0,0);
+		else if (colorName == "pink") cA = newArray(255, 192, 203);
+		else if (colorName == "green") cA = newArray(0,255,0); /* #00FF00 AKA Lime green */
+		else if (colorName == "blue") cA = newArray(0,0,255);
+		else if (colorName == "yellow") cA = newArray(255,255,0);
+		else if (colorName == "orange") cA = newArray(255, 165, 0);
+		else if (colorName == "garnet") cA = newArray(120,47,64);
+		else if (colorName == "gold") cA = newArray(206,184,136);
+		else if (colorName == "aqua_modern") cA = newArray(75,172,198); /* #4bacc6 AKA "Viking" aqua */
+		else if (colorName == "blue_accent_modern") cA = newArray(79,129,189); /* #4f81bd */
+		else if (colorName == "blue_dark_modern") cA = newArray(31,73,125);
+		else if (colorName == "blue_modern") cA = newArray(58,93,174); /* #3a5dae */
+		else if (colorName == "gray_modern") cA = newArray(83,86,90);
+		else if (colorName == "green_dark_modern") cA = newArray(121,133,65);
+		else if (colorName == "green_modern") cA = newArray(155,187,89); /* #9bbb59 AKA "Chelsea Cucumber" */
+		else if (colorName == "green_modern_accent") cA = newArray(214,228,187); /* #D6E4BB AKA "Gin" */
+		else if (colorName == "green_spring_accent") cA = newArray(0,255,102); /* #00FF66 AKA "Spring Green" */
+		else if (colorName == "orange_modern") cA = newArray(247,150,70);
+		else if (colorName == "pink_modern") cA = newArray(255,105,180);
+		else if (colorName == "purple_modern") cA = newArray(128,100,162);
+		else if (colorName == "jazzberry_jam") cA = newArray(165,11,94);
+		else if (colorName == "red_N_modern") cA = newArray(227,24,55);
+		else if (colorName == "red_modern") cA = newArray(192,80,77);
+		else if (colorName == "tan_modern") cA = newArray(238,236,225);
+		else if (colorName == "violet_modern") cA = newArray(76,65,132);
+		else if (colorName == "yellow_modern") cA = newArray(247,238,69);
+		/* Fluorescent Colors https://www.w3schools.com/colors/colors_crayola.asp */
+		else if (colorName == "Radical Red") cA = newArray(255,53,94);			/* #FF355E */
+		else if (colorName == "Wild Watermelon") cA = newArray(253,91,120);		/* #FD5B78 */
+		else if (colorName == "Outrageous Orange") cA = newArray(255,96,55);	/* #FF6037 */
+		else if (colorName == "Supernova Orange") cA = newArray(255,191,63);	/* FFBF3F Supernova Neon Orange*/
+		else if (colorName == "Atomic Tangerine") cA = newArray(255,153,102);	/* #FF9966 */
+		else if (colorName == "Neon Carrot") cA = newArray(255,153,51);			/* #FF9933 */
+		else if (colorName == "Sunglow") cA = newArray(255,204,51); 			/* #FFCC33 */
+		else if (colorName == "Laser Lemon") cA = newArray(255,255,102); 		/* #FFFF66 "Unmellow Yellow" */
+		else if (colorName == "Electric Lime") cA = newArray(204,255,0); 		/* #CCFF00 */
+		else if (colorName == "Screamin' Green") cA = newArray(102,255,102); 	/* #66FF66 */
+		else if (colorName == "Magic Mint") cA = newArray(170,240,209); 		/* #AAF0D1 */
+		else if (colorName == "Blizzard Blue") cA = newArray(80,191,230); 		/* #50BFE6 Malibu */
+		else if (colorName == "Dodger Blue") cA = newArray(9,159,255);			/* #099FFF Dodger Neon Blue */
+		else if (colorName == "Shocking Pink") cA = newArray(255,110,255);		/* #FF6EFF Ultra Pink */
+		else if (colorName == "Razzle Dazzle Rose") cA = newArray(238,52,210); 	/* #EE34D2 */
+		else if (colorName == "Hot Magenta") cA = newArray(255,0,204);			/* #FF00CC AKA Purple Pizzazz */
+		else restoreExit("No color match to " + colorName);
+		return cA;
+	}
+	function setColorFromColorName(colorName) {
+		colorArray = getColorArrayFromColorName(colorName);
+		setColor(colorArray[0], colorArray[1], colorArray[2]);
 	}
