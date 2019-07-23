@@ -7,9 +7,15 @@ PIXELS: The macro assumes that the imported XY values are in pixels.<br />
 ZERO Y AT TOP: Zero Y should be at the top of the image<br />
 &nbsp;&nbsp;&nbsp;this is OPPOSITE to the current ImageJ default XY export setting.<br />
 &nbsp;&nbsp;&nbsp;To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates<br />
-The macro adds the following 20(!) columns:<br />
-&nbsp;&nbsp;&nbsp;Conversions to pixel data based on scale factor: X(px), Y(px), XM(px), YM(px), BX(px), BY(px), Width(px), Height(px)<br />
-&nbsp;&nbsp;&nbsp;New minimum distance measurements: MinDist(px), MinLocX, MinLocY, MinDistAngle, Feret_MinDAngle_Offset<br />
-&nbsp;&nbsp;&nbsp;New minimum distance to average (~center) location of reference set: DistToRefCtr(px)<br />
-&nbsp;&nbsp;&nbsp;New maximum distance measurements: MaxDist(px), MaxLocX, MaxLocY<br />
-&nbsp;&nbsp;&nbsp;Scaled distances: MinRefDis, CtrRefDist, MaxRefDist<br />
+ <p>Up to 20 additional columns are added to Results table  in the current version:</p>
+<blockquote>
+  <p>
+    Minimum distances to the reference set (and the coordinates of the minimum location).<br />
+    Maximum distances to the reference set (and the coordinates of the maximum location).<br />
+    Minimum distances to the center (based on mean of coordinates) of the reference set.<br />
+    Angle of minimum distance direction (degrees).<br />
+    Angular offset of minimum distance angle from Feret angle.</p>
+    The added columns can be relabelled with a global prefix and/or suffix.<br />
+  <p>If the image is scaled, additional columns of &quot;unscaled&quot; pixel values will be added.</p>
+    <p>The minimum and maximum distance lines can be drawn as overlays.</p>
+<p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/Centroid-Intfc_Dist_Menu3_LCF_v190723b_Lines_PAL.png" alt="Color Coder example for autoprefs version using asc-silver LUT" height="326" /> </p>
