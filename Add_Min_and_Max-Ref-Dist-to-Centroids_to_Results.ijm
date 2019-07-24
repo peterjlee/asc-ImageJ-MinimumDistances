@@ -179,6 +179,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	}
 	/* Choose centroids for analysis */
 	iPxC = indexOfArray(pxXCoords,prefsCentroids,0);
+	luts=getLutsList();
 	Dialog.create("Choose object coordinates");
 		optionalMeasurements = "Choose new measurements to add to " + Table.title + ":\n   Minimum distance measurement: MinDist\(px\)\n   Coordinates of nearest reference points MinLocX, MinLocY\n   Directions: MinDistAngle, Feret_MinDAngle_Offset\n   Minimum distance to average \(~center\) location of reference set: DistToRefCtr\(px\)\n   Maximum distance measurements: MaxDist\(px\), MaxLocX, MaxLocY.";
 		optionalScaled = "\n   Calibrated distances: MinRefDist \("+unit+"\), CtrRefDist \("+unit+"\), MaxRefDist \("+unit+"\).";
@@ -190,13 +191,19 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		Dialog.addCheckbox("Select all measurements \(override above\)", false);
 		Dialog.addString("Optional prefix to add to new measurement column labels","");
 		Dialog.addString("Optional suffix to append to new measurement column labels","");
-		colorChoice = newArray("white", "black", "off-white", "off-black", "light_gray", "gray", "dark_gray", "red", "pink", "green", "blue", "yellow", "orange", "garnet", "gold", "aqua_modern", "blue_accent_modern", "blue_dark_modern", "blue_modern", "gray_modern", "green_dark_modern", "green_modern", "orange_modern", "pink_modern", "purple_modern", "jazzberry_jam", "red_N_modern", "red_modern", "tan_modern", "violet_modern", "yellow_modern", "Radical Red", "Wild Watermelon", "Outrageous Orange", "Supernova Orange","Atomic Tangerine", "Neon Carrot", "Sunglow", "Laser Lemon", "Electric Lime", "Screamin' Green", "Magic Mint", "Blizzard Blue", "Dodger Blue", "Shocking Pink", "Razzle Dazzle Rose", "Hot Magenta");
+		colorChoice = newArray("LUT", "red", "green", "white", "black", "off-white", "off-black", "light_gray", "gray", "dark_gray", "pink",  "blue", "yellow", "orange", "garnet", "gold", "aqua_modern", "blue_accent_modern", "blue_dark_modern", "blue_modern", "gray_modern", "green_dark_modern", "green_modern", "orange_modern", "pink_modern", "purple_modern", "jazzberry_jam", "red_N_modern", "red_modern", "tan_modern", "violet_modern", "yellow_modern", "Radical Red", "Wild Watermelon", "Outrageous Orange", "Supernova Orange","Atomic Tangerine", "Neon Carrot", "Sunglow", "Laser Lemon", "Electric Lime", "Screamin' Green", "Magic Mint", "Blizzard Blue", "Dodger Blue", "Shocking Pink", "Razzle Dazzle Rose", "Hot Magenta");
 		grayChoice = newArray("white", "black", "light_gray", "gray", "dark_gray");
 		Dialog.addCheckbox("Draw overlay lines from centroid to nearest reference point?", false);
-		Dialog.addChoice("Line color to minimum:", colorChoice, colorChoice[9]);
+		Dialog.addChoice("Line color to minimum \(choose LUT for indexed color\):", colorChoice, colorChoice[2]);
+		Dialog.addChoice("Choose LUT for Min line:", luts, luts[0]);
+		iCol = indexOfArray(newDistCols,"MinDist\(px\)",0);
+		Dialog.addChoice("If LUT choose a parameter to code min line by:", newDistCols, newDistCols[iCol]);
 		Dialog.addNumber("Line width to minimum",1);
 		Dialog.addCheckbox("Draw overlay lines from centroid to furthest reference point?", false);
-		Dialog.addChoice("Line color to maximum:", colorChoice, colorChoice[7]);
+		Dialog.addChoice("Line color to maximum \(choose LUT for indexed color\):", colorChoice, colorChoice[1]);
+		Dialog.addChoice("Choose LUT for Max line:", luts, luts[1]);
+		iCol = indexOfArray(newDistCols,"MaxDist\(px\)",0);
+		Dialog.addChoice("If LUT choose a parameter to code max line by:", newDistCols, newDistCols[iCol]);
 		Dialog.addNumber("Line width to maximum",1);
 	Dialog.show();
 		coordChoice = Dialog.getRadioButton();
@@ -209,9 +216,13 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		labelSuffix = Dialog.getString;
 		drawMinLine = Dialog.getCheckbox;
 		minLineColor = Dialog.getChoice;
+		minLineLUT = Dialog.getChoice;
+		minLineParameter = Dialog.getChoice;
 		minLineWidth = Dialog.getNumber;
 		drawMaxLine = Dialog.getCheckbox;
 		maxLineColor = Dialog.getChoice;
+		maxLineLUT = Dialog.getChoice;
+		maxLineParameter = Dialog.getChoice;
 		maxLineWidth = Dialog.getNumber;
 	// start = getTime(); /* Start after last dialog: used for debugging macro to optimize speed */
 	if (coordChoice == "X") {
@@ -270,7 +281,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	else feret_MinDAngle_OffsetC = false;
 	if (indexOfArray(addedCols,"DistToRefCtr\(px\)",-1)>=0) distToRefCtrC = true;
 	else distToRefCtrC = false;
-	if (indexOfArray(addedCols,"MaxDist",-1)>=0) maxDistC = true;
+	if (indexOfArray(addedCols,"MaxDist\(px\)",-1)>=0) maxDistC = true;
 	else maxDistC = false;
 	if (indexOfArray(addedCols,"MaxLocX",-1)>=0) maxLocC = true;
 	else maxLocC = true;
@@ -281,6 +292,8 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	if (indexOfArray(addedCols,"MaxRefDist" + "\(" + unit + "\)",-1)>=0) maxRefDistC = true;
 	else maxRefDistC = false;
 	/* End of new column selection */
+	// minLocXs = newArray(nRes);
+	// maxLocXs = newArray(nRes));
 	for (i=0 ; i<nRes; i++) {
 		showProgress(i, nRes);
 		for (j=0 ; j<(lengthOf(xpoints)); j++) distances[j] = sqrt((x1[i]-xpoints[j])*(x1[i]-xpoints[j])+(y1[i]-ypoints[j])*(y1[i]-ypoints[j]));
@@ -316,7 +329,9 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		if (FMinDAngleO>90) FMinDAngleO = 180 - FMinDAngleO; 
 		if (feret_MinDAngle_OffsetC) setResult("Feret_MinDAngle_Offset", i, FMinDAngleO);
 		if (distToRefCtrC) setResult("DistToRefCtr\(px\)", i, dRef);
-		if (maxDistC) setResult("MaxDist\(px\)", i, maxD);
+		if (maxDistC) {
+			setResult("MaxDist\(px\)", i, maxD);
+		}
 		iEnd = rankPosDist[lengthOf(distances)-1];
 		if (maxLocC) {
 			if (revertToImportedXY) {
@@ -335,20 +350,46 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		}
 	}
 	updateResults();
-	selectWindow(imageTitle);
+	// selectWindow(imageTitle);
+	// run("Select None");
 	if (drawMaxLine) {
-		setColorFromColorName(maxLineColor);
 		setLineWidth(maxLineWidth);
-		for (i=0; i<nRes; i++)
-			Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MaxLocX", i),getResult("MaxLocY",i));
-		Overlay.show;
+		if (maxLineColor!="LUT"){
+			setColorFromColorName(maxLineColor);
+			for (i=0; i<nRes; i++) Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MaxLocX", i),getResult("MaxLocY",i));
+		}
+		else {
+			maxValues = Table.getColumn(maxLineParameter);
+			Array.getStatistics(maxValues, min, max, null, null);
+			lutF = 255/(max-min);
+			print("LUT for maxDist lines: " + maxLineLUT);
+			maxLineColors = loadLutColors(maxLineLUT); /* load the LUT as a hexColor array: requires function */
+			for (i=0; i<nRes; i++) {
+				maxLineColorIndex = round(lutF*(maxValues[i]-min));
+				setColor("#" + maxLineColors[maxLineColorIndex]);
+				Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MaxLocX", i),getResult("MaxLocY",i));
+			}
+		}
 	}
+	Overlay.show;
 	if (drawMinLine) {
-		setColorFromColorName(minLineColor);
 		setLineWidth(minLineWidth);
-		for (i=0; i<nRes; i++)
-			Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MinLocX", i),getResult("MinLocY",i));
-		Overlay.show;
+		if (minLineColor!="LUT"){
+			setColorFromColorName(minLineColor);
+			for (i=0; i<nRes; i++) Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MinLocX", i),getResult("MinLocY",i));
+		}
+		else {
+			minValues = Table.getColumn(minLineParameter);
+			Array.getStatistics(minValues, min, max, null, null);
+			lutF = 255/(max-min);
+			print("LUT for minDist lines: " + minLineLUT);
+			minLineColors = loadLutColors(minLineLUT); /* load the LUT as a hexColor array: requires function */
+			for (i=0; i<nRes; i++) {
+				minLineColorIndex = round(lutF*(minValues[i]-min));
+				setColor("#" + minLineColors[minLineColorIndex]);
+				Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MinLocX", i),getResult("MinLocY",i));
+			}
+		}
 	}
 	Overlay.show;
 	allTableHeadingsString = Table.headings;
@@ -463,4 +504,51 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	function setColorFromColorName(colorName) {
 		colorArray = getColorArrayFromColorName(colorName);
 		setColor(colorArray[0], colorArray[1], colorArray[2]);
+	}
+	function getLutsList() {
+		/* v180723 added check for preferred LUTs */
+		lutsCheck = 0;
+		defaultLuts= getList("LUTs");
+		Array.sort(defaultLuts);
+		lutsDir = getDirectory("LUTs");
+		/* A list of frequently used LUTs for the top of the menu list . . . */
+		preferredLutsList = newArray("Your favorite LUTS here", "silver-asc", "viridis-linearlumin", "mpl-viridis", "mpl-plasma", "Glasbey", "Grays");
+		preferredLuts = newArray(preferredLutsList.length);
+		counter = 0;
+		for (i=0; i<preferredLutsList.length; i++) {
+			for (j=0; j<defaultLuts.length; j++) {
+				if (preferredLutsList[i] == defaultLuts[j]) {
+					preferredLuts[counter] = preferredLutsList[i];
+					counter +=1;
+					j = defaultLuts.length;
+				}
+			}
+		}
+		preferredLuts = Array.trim(preferredLuts, counter);
+		lutsList=Array.concat(preferredLuts, defaultLuts);
+		return lutsList; /* Required to return new array */
+	}
+	function pad(n) {
+		n = toString(n);
+		if(lengthOf(n)==1) n = "0"+n;
+		return n;
+	}
+	function loadLutColors(lut) {
+		/* v190724 creates temp image for lut color acquisition */
+		if (is("Batch Mode")==false){
+			batchWasOff = true;
+			setBatchMode(true);	/* toggle batch mode back on */
+		}
+		else batchWasOff = false;
+		newImage("temp-lut","8-bit",1,1,1);
+  		run(lut);
+		getLut(reds, greens, blues);
+		close();
+		hexColors = newArray(256);
+		for (i=0; i<256; i++) {
+			r = toHex(reds[i]);  g = toHex(greens[i]); b = toHex(blues[i]);
+			hexColors[i]= ""+ pad(r) +""+ pad(g) +""+ pad(b);
+		}
+		if (batchWasOff) setBatchMode("exit & display");	/* toggle batch mode back off */
+		return hexColors;
 	}
