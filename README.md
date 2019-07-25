@@ -17,4 +17,4 @@ ZERO Y AT TOP: Zero Y should be at the top of the image<br />
 &nbsp;&nbsp;&nbsp;The added columns can be relabeled with a global prefix and/or suffix.<br />
   <p>If the image is scaled, additional columns of &quot;unscaled&quot; pixel values will be added.</p>
   <p>The minimum and maximum distance lines can be drawn as overlays. LUTs can be used to color code the lines according to any parameters in the Results table.</p>
-<p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/Centroid-Intfc_Dist_Menu3_LCF_v190725c_Lines_785x599PAL.png" alt="Min and Max distance to reference coordinates example. This example uses a LUT to color code the minimum distances." height="599" /> </p>
+<p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/Centroid-Intfc_Dist_Menu3_LCF_v190725_Lines_723x512_PAL.png" alt="Min and Max distance to reference coordinates example. This example uses a LUT to color code the minimum distances." height="512" /> </p>
