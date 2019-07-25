@@ -16,7 +16,7 @@
 	v180604 Add option to convert coordinate reference values to "Analyze" pixel centroids by adding 0.5 pixels to X and Y.
 	v190706 Removed unnecessary ROI requirement, fixed unclosed comment area, introduced Table functions, added delimiter test for coordinate file.
 	v190722 Added additional output options, including reverting to imported coordinates. Preferences are saved.
-	v190723 New table columns can be relabeled using a global prefix and/or suffix. v190723b Min and Lax lines can be drawn as overlays.
+	v190723 New table columns can be relabeled using a global prefix and/or suffix. v190723b Min and Lax lines can be drawn as overlays. v190725 LUTs can be used to color code lines according to table values.
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
@@ -264,7 +264,6 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	}
 	else restoreExit("No centroids selected, goodbye.");
 	addedColsString = arrayToString(addedCols,delimiter);
-	allTableHeadingsString = Table.headings;
 	/* Remove units */
 	addedColsString = replace(addedColsString, unit, "_unit_");
 	call("ij.Prefs.set", prefsNameKey+"AdedCols", addedColsString);
@@ -369,18 +368,19 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		setLineWidth(maxLineWidth);
 		if (maxLineColor!="LUT"){
 			setColorFromColorName(maxLineColor);
-			for (i=0; i<nRes; i++) Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MaxLocX", i),getResult("MaxLocY",i));
+			for (i=0; i<nRes; i++) Overlay.drawLine(x1[i],y1[i],getResult("MaxLocX", i),getResult("MaxLocY",i));
+			setColorFromColorName(maxLineColor);
 		}
 		else {
 			maxValues = Table.getColumn(maxLineParameter);
 			Array.getStatistics(maxValues, min, max, null, null);
 			lutF = 255/(max-min);
-			print("LUT for maxDist lines: " + maxLineLUT);
-			maxLineColors = loadLutColors(maxLineLUT); /* load the LUT as a hexColor array: requires function */
+			print("LUT for maxDist lines: " + maxLineLUT + " range " + min + " to " + max + ", coded by: " + maxLineParameter);
+			maxLineColors = loadLutColorsFromTemp(maxLineLUT); /* load the LUT as a hexColor array: requires function */
 			for (i=0; i<nRes; i++) {
 				maxLineColorIndex = round(lutF*(maxValues[i]-min));
-				setColor("#" + maxLineColors[maxLineColorIndex]);
-				Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MaxLocX", i),getResult("MaxLocY",i));
+				Overlay.drawLine(x1[i],y1[i],maxLocXs[i],maxLocYs[i]);
+				setColor("#" + maxLineColors[maxLineColorIndex]); /* set color after line drawn */
 			}
 		}
 	}
@@ -390,28 +390,29 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		if (minLineColor!="LUT"){
 			setColorFromColorName(minLineColor);
 			for (i=0; i<nRes; i++) Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MinLocX", i),getResult("MinLocY",i));
+			setColorFromColorName(minLineColor);
 		}
 		else {
 			minValues = Table.getColumn(minLineParameter);
 			Array.getStatistics(minValues, min, max, null, null);
 			lutF = 255/(max-min);
-			print("LUT for minDist lines: " + minLineLUT);
-			minLineColors = loadLutColors(minLineLUT); /* load the LUT as a hexColor array: requires function */
+			print("LUT for minDist lines: " + minLineLUT + " range " + min + " to " + max + ", coded by: " + minLineParameter);
+			minLineColors = loadLutColorsFromTemp(minLineLUT); /* load the LUT as a hexColor array: requires function */
 			for (i=0; i<nRes; i++) {
 				minLineColorIndex = round(lutF*(minValues[i]-min));
-				setColor("#" + minLineColors[minLineColorIndex]);
-				Overlay.drawLine(round(x1[i]),round(y1[i]),getResult("MinLocX", i),getResult("MinLocY",i));
+				Overlay.drawLine(x1[i],y1[i],minLocXs[i],minLocYs[i]);
+				setColor("#" + minLineColors[minLineColorIndex]); /* set color after line drawn */
 			}
 		}
 	}
 	Overlay.show;
-	allTableHeadingsString = Table.headings;
-	allNewTableHeadingsString = substring(allTableHeadingsString,lengthOf(allTableHeadingsString));
-	allNewTableHeadings = split(allNewTableHeadingsString);
 	if (labelPrefix!="" || labelSuffix!=""){
-		for (i=0; i<allNewTableHeadings.length; i++) {
-			if (indexOf(allTableHeadingsString,labelPrefix+allNewTableHeadings[i]+labelSuffix)>=0) restoreExit(labelPrefix+allNewTableHeadings[i]+labelSuffix + " already exists, column relabeling cannot continue, goodbye");
-			Table.renameColumn(allNewTableHeadings[i], labelPrefix+allNewTableHeadings[i]+labelSuffix);
+		allFinalTableHeadings = split(String.getResultsHeadings);
+		for (i=0; i<newDistCols.length; i++) {
+			newLabel = labelPrefix+newDistCols[i]+labelSuffix;
+			if (indexOfArray(allFinalTableHeadings,newLabel,-1)>=0) {Table.deleteColumn(newLabel);}
+			Table.renameColumn(newDistCols[i], newLabel);
+			print ("relabeled column: " + newLabel);
 		}
 	}
 	run("Select None");
@@ -546,7 +547,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		if(lengthOf(n)==1) n = "0"+n;
 		return n;
 	}
-	function loadLutColors(lut) {
+	function loadLutColorsFromTemp(lut) {
 		/* v190724 creates temp image for lut color acquisition */
 		if (is("Batch Mode")==false){
 			batchWasOff = true;
