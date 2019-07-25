@@ -197,13 +197,14 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		Dialog.addChoice("Line color to minimum \(choose LUT for indexed color\):", colorChoice, colorChoice[2]);
 		Dialog.addChoice("Choose LUT for Min line:", luts, luts[0]);
 		iCol = indexOfArray(newDistCols,"MinDist\(px\)",0);
-		Dialog.addChoice("If LUT choose a parameter to code min line by:", newDistCols, newDistCols[iCol]);
+		oldAndNewCols = Array.concat(newDistCols, tableHeadings);
+		Dialog.addChoice("If LUT choose a parameter to code min line by:", oldAndNewCols, oldAndNewCols[iCol]);
 		Dialog.addNumber("Line width to minimum",1);
 		Dialog.addCheckbox("Draw overlay lines from centroid to furthest reference point?", false);
 		Dialog.addChoice("Line color to maximum \(choose LUT for indexed color\):", colorChoice, colorChoice[1]);
 		Dialog.addChoice("Choose LUT for Max line:", luts, luts[1]);
 		iCol = indexOfArray(newDistCols,"MaxDist\(px\)",0);
-		Dialog.addChoice("If LUT choose a parameter to code max line by:", newDistCols, newDistCols[iCol]);
+		Dialog.addChoice("If LUT choose a parameter to code max line by:", oldAndNewCols, oldAndNewCols[iCol]);
 		Dialog.addNumber("Line width to maximum",1);
 	Dialog.show();
 		coordChoice = Dialog.getRadioButton();
@@ -269,7 +270,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	call("ij.Prefs.set", prefsNameKey+"AdedCols", addedColsString);
 	call("ij.Prefs.set", prefsNameKey+"Centroids", coordChoice);
 	distances = newArray(coOrds);
-	FAngles = Table.getColumn("FeretAngle");
+	fAngles = Table.getColumn("FeretAngle");
 	/* Choose new column output before loop */
 	if (indexOfArray(addedCols,"MinDist\(px\)",-1)>=0) minDistC = true;
 	else minDistC = false;
@@ -292,62 +293,74 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	if (indexOfArray(addedCols,"MaxRefDist" + "\(" + unit + "\)",-1)>=0) maxRefDistC = true;
 	else maxRefDistC = false;
 	/* End of new column selection */
-	// minLocXs = newArray(nRes);
-	// maxLocXs = newArray(nRes));
+	minDs = newArray(nRes);
+	maxDs = newArray(nRes);
+	minLocXs = newArray(nRes);
+	minLocYs = newArray(nRes);
+	maxLocXs = newArray(nRes);
+	maxLocYs = newArray(nRes);
+	minDistAngles = newArray(nRes);
+	fMinDAngleOs = newArray(nRes);
+	dRefs = newArray(nRes);
+	minRefDists = newArray(nRes);
+	ctrRefDists = newArray(nRes);
+	maxRefDists = newArray(nRes);
+	if (revertToImportedXY) modP = 0.5;
+	else modP = 0;
 	for (i=0 ; i<nRes; i++) {
 		showProgress(i, nRes);
 		for (j=0 ; j<(lengthOf(xpoints)); j++) distances[j] = sqrt((x1[i]-xpoints[j])*(x1[i]-xpoints[j])+(y1[i]-ypoints[j])*(y1[i]-ypoints[j]));
 		sortedDistances = Array.copy(distances);
 		Array.sort(sortedDistances);
 		rankPosDist = Array.rankPositions(distances);
-		minD = sortedDistances[0];
-		maxD = sortedDistances[lengthOf(distances)-1];
+		minDs[i] = sortedDistances[0];
+		maxDs[i] = sortedDistances[lengthOf(distances)-1];
 		/* nearest neighbor alternative */
-		if (minD==0) {
-			minD = sortedDistances[1];
+		if (minDs[i]==0) {
+			minDs[i] = sortedDistances[1];
 			k = rankPosDist[1];
 		}
 		else {
 			k = rankPosDist[0];
 		}
-		if (minDistC) setResult("MinDist\(px\)", i, minD);
 		if (minLocC) {
-			if (revertToImportedXY) {
-				setResult("MinLocX", i, d2s(xpoints[k]-0.5,0));
-				setResult("MinLocY", i, d2s(ypoints[k]-0.5,0));
-			}
-			else {
-				setResult("MinLocX", i, d2s(xpoints[k],1));
-				setResult("MinLocY", i, d2s(ypoints[k],1));
-			}
-		}
-		mda = (180/PI)*atan((y1[i]-ypoints[k])/((xpoints[k]-x1[i])));
-		if (mda<0) mda = 180 + mda; /* modify angle to match 0-180 FeretAngle */
-		if (minDistAngleC) setResult("MinDistAngle", i, mda);
-		dRef = sqrt((x1[i]-meanx)*(x1[i]-meanx)+(y1[i]-meany)*(y1[i]-meany));
-		FMinDAngleO = abs(FAngles[i]-mda);
-		if (FMinDAngleO>90) FMinDAngleO = 180 - FMinDAngleO; 
-		if (feret_MinDAngle_OffsetC) setResult("Feret_MinDAngle_Offset", i, FMinDAngleO);
-		if (distToRefCtrC) setResult("DistToRefCtr\(px\)", i, dRef);
-		if (maxDistC) {
-			setResult("MaxDist\(px\)", i, maxD);
+			minLocXs[i] = d2s(xpoints[k]- modP,0);
+			minLocYs[i] = d2s(ypoints[k]- modP,0);
 		}
 		iEnd = rankPosDist[lengthOf(distances)-1];
 		if (maxLocC) {
-			if (revertToImportedXY) {
-				setResult("MaxLocX", i, d2s(xpoints[iEnd]-0.5,0));
-				setResult("MaxLocY", i, d2s(ypoints[iEnd]-0.5,0));
-			}
-			else {
-				setResult("MaxLocX", i, d2s(xpoints[iEnd],1));
-				setResult("MaxLocY", i, d2s(ypoints[iEnd],1));
-			}
+			maxLocXs[i] = d2s(xpoints[iEnd]- modP,0);
+			maxLocYs[i] = d2s(ypoints[iEnd]- modP,0);
 		}
+		mda = (180/PI)*atan((y1[i]-ypoints[k])/((xpoints[k]-x1[i])));
+		if (mda<0) mda = 180 + mda; /* modify angle to match 0-180 FeretAngle */
+		if (minDistAngleC) minDistAngles[i] = mda;
+		dRefs[i] = sqrt((x1[i]-meanx)*(x1[i]-meanx)+(y1[i]-meany)*(y1[i]-meany));
+		fMinDAngleOs[i] = abs(fAngles[i]-mda);
+		if (fMinDAngleOs[i]>90) fMinDAngleOs[i] = 180 - fMinDAngleOs[i]; 
 		if (lcf!=1) {
-			if (minRefDistC) setResult('MinRefDist' + "\(" + unit + "\)", i, minD*lcf);
-			if (ctrRefDistC) setResult('CtrRefDist' + "\(" + unit + "\)", i, dRef*lcf);
-			if (maxRefDistC) setResult('MaxRefDist' + "\(" + unit + "\)", i, maxD*lcf);
+			if (minRefDistC) minRefDists[i] = minDs[i]*lcf;
+			if (ctrRefDistC) ctrRefDists[i] = dRefs[i]*lcf;
+			if (maxRefDistC) maxRefDists[i] = maxDs[i]*lcf;
 		}
+	}
+	if (minDistC) Table.setColumn("MinDist\(px\)", minDs);
+	if (maxDistC) Table.setColumn("MaxDist\(px\)", maxDs);
+	if (minLocC) {
+		Table.setColumn("MinLocX",minLocXs);
+		Table.setColumn("MinLocY",minLocYs);
+	}
+	if (maxLocC) {
+		Table.setColumn("MaxLocX",maxLocXs);
+		Table.setColumn("MaxLocY",maxLocYs);
+	}
+	if (minDistAngleC) Table.setColumn("MinDistAngle", minDistAngles);
+	if (feret_MinDAngle_OffsetC) Table.setColumn("Feret_MinDAngle_Offset",fMinDAngleOs);
+	if (distToRefCtrC) Table.setColumn("DistToRefCtr\(px\)", dRefs);
+	if (lcf!=1) {
+		if (minRefDistC) Table.setColumn("MinRefDist" + "\(" + unit + "\)", minRefDists);
+		if (ctrRefDistC) Table.setColumn("CtrRefDist" + "\(" + unit + "\)", ctrRefDists);
+		if (maxRefDistC) Table.setColumn("MaxRefDist" + "\(" + unit + "\)", maxRefDists);
 	}
 	updateResults();
 	// selectWindow(imageTitle);
@@ -543,12 +556,12 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		newImage("temp-lut","8-bit",1,1,1);
   		run(lut);
 		getLut(reds, greens, blues);
-		close();
 		hexColors = newArray(256);
 		for (i=0; i<256; i++) {
 			r = toHex(reds[i]);  g = toHex(greens[i]); b = toHex(blues[i]);
 			hexColors[i]= ""+ pad(r) +""+ pad(g) +""+ pad(b);
 		}
+		close();
 		if (batchWasOff) setBatchMode("exit & display");	/* toggle batch mode back off */
 		return hexColors;
 	}
