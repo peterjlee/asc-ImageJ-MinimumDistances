@@ -2,12 +2,12 @@
 This ImageJ macro adds the minimum distance between the centroid of a set of analyzed objects and a reference set of points to the ImageJ results table. This data can then used to provide position normalized quantification of microstructures and microchemistry. This could be done with just a few lines of ImageJ/Fiji macro code but here we try to extract a few more distance derived details.<br />
 
 A reference location file with X in column 1 and Y in column 2 is now required (either a tab separated txt file exported by ImageJ or a csv file).<br />
-The macro can use imported XY values that are in pixels of to the same scale as the active image<br />
+The macro can use imported XY values that are in pixels or to the same scale as the active image<br />
 &nbsp;&nbsp;&nbsp;but if the active image is calibrated the macro will generate both pixel and scaled information.<br />
 ZERO Y AT TOP: Zero Y should be at the top of the image<br />
 &nbsp;&nbsp;&nbsp;this is OPPOSITE to the current ImageJ default XY export setting.<br />
 &nbsp;&nbsp;&nbsp;To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates<br />
- <p>Up to 20 additional columns are added to Results table  in the current version:</p>
+ <p>Up to 20 additional columns (12 optional) are added to the Results table in the current version:</p>
  <p>
 &nbsp;&nbsp;&nbsp;Minimum distances to the reference set (and the coordinates of the minimum location).<br />
 &nbsp;&nbsp;&nbsp;Maximum distances to the reference set (and the coordinates of the maximum location).<br />
