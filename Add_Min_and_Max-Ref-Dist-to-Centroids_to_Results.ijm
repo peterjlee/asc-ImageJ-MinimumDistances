@@ -17,6 +17,7 @@
 	v190706 Removed unnecessary ROI requirement, fixed unclosed comment area, introduced Table functions, added delimiter test for coordinate file.
 	v190722 Added additional output options, including reverting to imported coordinates. Preferences are saved.
 	v190723 New table columns can be relabeled using a global prefix and/or suffix. v190723b Min and Lax lines can be drawn as overlays. v190725 LUTs can be used to color code lines according to table values.
+	v190731 Calibrated imported XY values can be used if they are to the same scale as the active image.
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
@@ -49,57 +50,78 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		restoreExit("This macro requires that you have already run Analyze or Particles to obtain object coordinates.");
 	lcf=(pixelWidth+pixelHeight)/2; /*---> add here the side size of 1 pixel in the new calibrated units (e.g. lcf=5, if 1 pixel is 5 mm) <---
 	*/
-	description1 = "Results Table coordinates assumed to be in " + unit + ".\n     A reference location file with X in column 1 and Y in column 2 is now required\n     \(either a tab separated txt file exported by ImageJ or a csv file\).\n \nPIXELS: The macro assumes that the imported XY values are in pixels.\n     ";
-	importXY = "To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates\n";
+	description1 = "Results Table coordinates assumed to be in " + unit + ".\n     A reference location file with X in column 1 and Y in column 2 is now required\n     \(either a tab separated txt file exported by ImageJ or a csv file\).\n     ";
+	importXY = "To export the XY coordinates of all non-background pixels: Analyze > Tools > Save XY Coordinates.\n";
 	zeroAtTop = "ZERO Y AT TOP: Zero Y should be at the top of the image.\n     This is OPPOSITE to the current ImageJ default XY export setting.";
 	if (lcf!=1) {
 		print("Current image pixel width = " + pixelWidth + " " + unit +".");
 		/* ask for a file to be imported */
-		showMessageWithCancel(description1 + "      The macro will generate both pixel and scaled information.\n \n" + zeroAtTop + "\n \n" + importXY + "\n \nThe macro adds the following conversions to pixel data based on 1 pixel = " + lcf + " " + unit + ":\n     X\(px\), Y\(px\), XM\(px\), YM\(px\), BX\(px\), BY\(px\), Width\(px\), Height\(px\)\n");
+		message1 = description1 + "      The macro will generate both pixel and scaled information.\n \n" + zeroAtTop + " \n \n" + importXY + "\nThe macro adds the following conversions to pixel data based on 1 pixel = " + lcf + " " + unit + ":\n     X\(px\), Y\(px\), XM\(px\), YM\(px\), BX\(px\), BY\(px\), Width\(px\), Height\(px\)\n";
+		impCals = newArray("pixels","same as image","exit");
 	}
 	else {
 		print("No scale is set; all data is assumed to be in pixels.");
 		/* ask for a file to be imported */
-		showMessageWithCancel(description1 + "Because the image scale is pixels the macro will generate only pixel distances.\n \n" + zeroAtTop + "\n \n" + importXY);
+		message1 = description1 + "Because the image scale is pixels the macro will generate only pixel distances.\n \n" + zeroAtTop + "\n \n" + importXY;
+		impCals = newArray("pixels","exit");
 	}
+	Dialog.create("Calibration for Imported Coordinates");
+		Dialog.addMessage(message1);
+		Dialog.addRadioButtonGroup("Calibration of imported coordinates: ", impCals,1,3,"pixels");
+	Dialog.show;
+		impCal = Dialog.getRadioButton;
+	if (impCal == "exit") restoreExit("Sorry, I am not sophisticated enough to handle mixed calibrations.");
+	else if (impCal == "pixels") unitP = "pixels";
+	else unitP = unit;
 	if (indexOfArray(tableHeadings,"X",-1)<0 && lcf!=1)
 		print("As coordinates from Particles4-8 are never scaled three scaled \(" + unit + "\) columns will be added at the end.");
-	fileName = File.openDialog("Select the file to import with X and Y pixel coordinates.");
+	fileName = File.openDialog("Select the file to import with X and Y " + unitP + " coordinates.");
 	allText = File.openAsString(fileName);
-	Dialog.create("Pixel center correction");
-		Dialog.addMessage("Exported pixel coordinates use the top left the pixel but analyzed object coordinates\nare based on the center of the pixel.\n \nTo correct for this you can add 0.5 pixels to the imported X and Y coordinates.")
-		Dialog.addCheckbox("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 pixels to X and Y\)", true);
-		Dialog.addMessage("Subsequently revert the discovered MinLoc/MaxLoc coordinates to match imported values\nwhen saving to the Results table \(MinLoc X&Y and MaxLoc X&Y only\).")
-		Dialog.addCheckbox("Revert new MinLoc/MaxLoc coordinates to match imported values? \(Subtract 0.5 pixels from X and Y\)", true);
-		Dialog.show;
-		coordToCtr = Dialog.getCheckbox();
-		revertToImportedXY = Dialog.getCheckbox();
-	if (!coordToCtr && revertToImportedXY) {
-		areUShure = getBoolean("Are you sure you want to revert the unconverted coordinates?");
-		if (!areUShure) revertToImportedXY = false;
+	if (impCal == "pixels"){
+		Dialog.create("Pixel center correction");	
+			Dialog.addMessage("Exported pixel coordinates use the top left the pixel but analyzed object coordinates\nare based on the center of the pixel.\n \nTo correct for this you can add 0.5 pixels to the imported X and Y coordinates.")
+			Dialog.addCheckbox("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 pixels to X and Y\)", true);
+			Dialog.addMessage("Subsequently revert the discovered MinLoc/MaxLoc coordinates to match imported values\nwhen saving to the Results table \(MinLoc X&Y and MaxLoc X&Y only\).")
+			Dialog.addCheckbox("Revert new MinLoc/MaxLoc coordinates to match imported values? \(Subtract 0.5 pixels from X and Y\)", true);
+			Dialog.show;
+			coordToCtr = Dialog.getCheckbox();
+			revertToImportedXY = Dialog.getCheckbox();
+		if (!coordToCtr && revertToImportedXY) {
+			areUShure = getBoolean("Are you sure you want to revert the unconverted coordinates?");
+			if (!areUShure) revertToImportedXY = false;
+		}
 	}
-	if (endsWith(fileName, ".txt")) fileFormat = "txt"; /* for input is in TXT format with tab */
-	else if (endsWith(fileName, ".csv")) fileFormat = "csv"; /* for input is in CSV format */
-	else restoreExit("Selected file is not in a supported format \(.txt or .csv\)");	 /* in case of any other format */
+	else { 
+		coordToCtr = false;
+		revertToImportedXY = false;
+	}
+	fileFormat = substring(fileName, indexOf(fileName,".",lengthOf(fileName)-5));
+	// if (endsWith(fileName, ".txt")) fileFormat = "txt"; /* for input is in TXT format with tab */
+	// else if (endsWith(fileName, ".csv")) fileFormat = "csv"; /* for input is in CSV format */
+	// else restoreExit("Selected file is not in a supported format \(.txt or .csv\)");	 /* in case of any other format */
 	text = split(allText, "\n"); /* parse text by lines */
 	hdrCount = 0;
 	iX = 0; iY = 1;
 	coOrds = lengthOf(text);
 	xpoints = newArray(coOrds);
-	ypoints = newArray(coOrds); 
+	ypoints = newArray(coOrds);
 	for (i = 0; i < (coOrds); i++){ /* loading and parsing each line */
 		if (indexOf(text[i],",")>=0) line = split(text[i],",");
 		else if (indexOf(text[i],"\t")>=0) line = split(text[i],"\t");
 		else if (indexOf(text[i],"|")>=0) line = split(text[i],"|");
 		else if (indexOf(text[i],"0")>=0) line = split(text[i]," ");
-		else restoreExit("No common delimeters found in coordinate file, goodbye.");
+		else restoreExit("No common delimiters found in coordinate file, goodbye.");
 		if (isNaN(parseInt(line[iX]))){ /* Do not test line[iY] is it might not exist */
 			hdrCount += 1;
 		}
 		else {
 			xpoints[i-hdrCount] = parseInt(line[iX]);
 			ypoints[i-hdrCount] = parseInt(line[iY]);
-			if (coordToCtr) {
+			if (unitP!="pixels"){
+				xpoints[i-hdrCount] /= lcf;
+				ypoints[i-hdrCount] /= lcf;
+			}
+			else if (coordToCtr) { /* assumes that calibrated coordinates will not have 0.5 pixels offset issue */
 				xpoints[i-hdrCount] += 0.5;
 				ypoints[i-hdrCount] += 0.5;
 			}
@@ -116,10 +138,10 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	/* loading and parsing each line */
 	Array.getStatistics(xpoints, minx, maxx, meanx, stdx);
 	Array.getStatistics(ypoints, miny, maxy, meany, stdy);
-	importReport2 = "Center of Reference Point Set is at x = " + meanx + ", y= " + meany + " \(pixels\).\n";
-	importReport3 = "Reference Point Set Range x: " + minx + " - " + maxx + ", y: " + miny + " - " + maxy + " \(pixels\).";
+	importReport2 = "Center of Reference Point Set is at x = " + meanx + ", y= " + meany + " \(" + unitP + "\).\n";
+	importReport3 = "Reference Point Set Range x: " + minx + " - " + maxx + ", y: " + miny + " - " + maxy + " \(" + unitP + "\).";
 	print(importReport2,importReport3);
-	/* Pixel coordinates are used, take the opportunity to add them to the results table if they are missing */
+	/* Imported pixel coordinates are more typically used for this macro so for consistency the pixel values will be created for the results table as well as calibrated final results */
 	lcfs = newArray(nRes);
 	Array.fill(lcfs, lcf);
 	Table.setColumn("lcfc", lcfs); /* just a trick to use a variable in a table macro in anticipation of using variables in future imageJ versions */
@@ -334,7 +356,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		mda = (180/PI)*atan((y1[i]-ypoints[k])/((xpoints[k]-x1[i])));
 		if (mda<0) mda = 180 + mda; /* modify angle to match 0-180 FeretAngle */
 		if (minDistAngleC) minDistAngles[i] = mda;
-		dRefs[i] = sqrt((x1[i]-meanx)*(x1[i]-meanx)+(y1[i]-meany)*(y1[i]-meany));
+		dRefs[i] = sqrt(pow((x1[i]-meanx),2)+pow((y1[i]-meany),2));
 		fMinDAngleOs[i] = abs(fAngles[i]-mda);
 		if (fMinDAngleOs[i]>90) fMinDAngleOs[i] = 180 - fMinDAngleOs[i]; 
 		if (lcf!=1) {
