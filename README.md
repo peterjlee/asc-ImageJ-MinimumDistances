@@ -1,7 +1,7 @@
 # asc-ImageJ-MinimumDistances
-This ImageJ macro adds the minimum distance between the centroid of a set of analyzed objects and a reference set of points to the ImageJ results table. This data can then used to provide position normalized quantification of microstructures and microchemistry. This could be done with just a few lines of ImageJ/Fiji macro code but here we try to extract a few more distance derived details.<br />
+This ImageJ macro adds the minimum distance between the centroid of a set of analyzed objects and a reference set of points to the ImageJ results table. This could be done with just a few lines of ImageJ/Fiji macro code but here we try to extract a few more distance derived details. This data can then used to provide position normalized quantification of microstructures, microchemistry and even images as in this publication: <a href="https://fs.magnet.fsu.edu/~lee/asc/pdf_papers/643.pdf">PDF</a></p><br />
 
-A reference location file with X in column 1 and Y in column 2 is now required (either a tab separated txt file exported by ImageJ or a csv file).<br />
+A reference location file with X coordinates in column 1 and Y coordinates in column 2 is required (using standard mageJ delimeters - e.g. a tab separated txt file exported by ImageJ or a csv file).<br />
 The macro can use imported XY values that are in pixels or to the same scale as the active image<br />
 &nbsp;&nbsp;&nbsp;but if the active image is calibrated the macro will generate both pixel and scaled information.<br />
 ZERO Y AT TOP: Zero Y should be at the top of the image<br />
