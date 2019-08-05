@@ -17,7 +17,8 @@
 	v190706 Removed unnecessary ROI requirement, fixed unclosed comment area, introduced Table functions, added delimiter test for coordinate file.
 	v190722 Added additional output options, including reverting to imported coordinates. Preferences are saved.
 	v190723 New table columns can be relabeled using a global prefix and/or suffix. v190723b Min and Lax lines can be drawn as overlays. v190725 LUTs can be used to color code lines according to table values.
-	v190731 Calibrated imported XY values can be used if they are to the same scale as the active image.
+	v190731 Calibrated imported XY values can be used if they are to the same scale as the active image. v190802 Minor fixes.
+	v190805 Fixed space separated values option.
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
@@ -96,10 +97,8 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		revertToImportedXY = false;
 	}
 	fileFormat = substring(fileName, indexOf(fileName,".",lengthOf(fileName)-5));
-	// if (endsWith(fileName, ".txt")) fileFormat = "txt"; /* for input is in TXT format with tab */
-	// else if (endsWith(fileName, ".csv")) fileFormat = "csv"; /* for input is in CSV format */
-	// else restoreExit("Selected file is not in a supported format \(.txt or .csv\)");	 /* in case of any other format */
-	text = split(allText, "\n"); /* parse text by lines */
+	if (indexOf(allText,"\n")>=0) text = split(allText, "\n"); /* parse text by newlines */
+	else if (indexOf(allText,"\r")>=0) text = split(allText, "\r"); /* parse text by return */
 	hdrCount = 0;
 	iX = 0; iY = 1;
 	coOrds = lengthOf(text);
@@ -109,7 +108,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		if (indexOf(text[i],",")>=0) line = split(text[i],",");
 		else if (indexOf(text[i],"\t")>=0) line = split(text[i],"\t");
 		else if (indexOf(text[i],"|")>=0) line = split(text[i],"|");
-		else if (indexOf(text[i],"0")>=0) line = split(text[i]," ");
+		else if (indexOf(text[i]," ")>=0) line = split(text[i]," ");
 		else restoreExit("No common delimiters found in coordinate file, goodbye.");
 		if (isNaN(parseInt(line[iX]))){ /* Do not test line[iY] is it might not exist */
 			hdrCount += 1;
@@ -330,7 +329,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	else modP = 0;
 	for (i=0 ; i<nRes; i++) {
 		showProgress(i, nRes);
-		for (j=0 ; j<(lengthOf(xpoints)); j++) distances[j] = sqrt((x1[i]-xpoints[j])*(x1[i]-xpoints[j])+(y1[i]-ypoints[j])*(y1[i]-ypoints[j]));
+		for (j=0 ; j<(lengthOf(xpoints)); j++) distances[j] = sqrt(pow(x1[i]-xpoints[j],2)+pow(y1[i]-ypoints[j],2));
 		sortedDistances = Array.copy(distances);
 		Array.sort(sortedDistances);
 		rankPosDist = Array.rankPositions(distances);
@@ -356,7 +355,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		mda = (180/PI)*atan((y1[i]-ypoints[k])/((xpoints[k]-x1[i])));
 		if (mda<0) mda = 180 + mda; /* modify angle to match 0-180 FeretAngle */
 		if (minDistAngleC) minDistAngles[i] = mda;
-		dRefs[i] = sqrt(pow((x1[i]-meanx),2)+pow((y1[i]-meany),2));
+		dRefs[i] = sqrt(pow(x1[i]-meanx,2)+pow(y1[i]-meany,2));
 		fMinDAngleOs[i] = abs(fAngles[i]-mda);
 		if (fMinDAngleOs[i]>90) fMinDAngleOs[i] = 180 - fMinDAngleOs[i]; 
 		if (lcf!=1) {
@@ -365,8 +364,8 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 			if (maxRefDistC) maxRefDists[i] = maxDs[i]*lcf;
 		}
 	}
-	if (minDistC) Table.setColumn("MinDist\(px\)", minDs);
-	if (maxDistC) Table.setColumn("MaxDist\(px\)", maxDs);
+	if (minDistC) { Table.setColumn("MinDist\(px\)", minDs);}
+	if (maxDistC) { Table.setColumn("MaxDist\(px\)", maxDs);}
 	if (minLocC) {
 		Table.setColumn("MinLocX",minLocXs);
 		Table.setColumn("MinLocY",minLocYs);
@@ -375,13 +374,13 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		Table.setColumn("MaxLocX",maxLocXs);
 		Table.setColumn("MaxLocY",maxLocYs);
 	}
-	if (minDistAngleC) Table.setColumn("MinDistAngle", minDistAngles);
-	if (feret_MinDAngle_OffsetC) Table.setColumn("Feret_MinDAngle_Offset",fMinDAngleOs);
-	if (distToRefCtrC) Table.setColumn("DistToRefCtr\(px\)", dRefs);
+	if (minDistAngleC) { Table.setColumn("MinDistAngle", minDistAngles);}
+	if (feret_MinDAngle_OffsetC) { Table.setColumn("Feret_MinDAngle_Offset",fMinDAngleOs);}
+	if (distToRefCtrC) { Table.setColumn("DistToRefCtr\(px\)", dRefs);}
 	if (lcf!=1) {
-		if (minRefDistC) Table.setColumn("MinRefDist" + "\(" + unit + "\)", minRefDists);
-		if (ctrRefDistC) Table.setColumn("CtrRefDist" + "\(" + unit + "\)", ctrRefDists);
-		if (maxRefDistC) Table.setColumn("MaxRefDist" + "\(" + unit + "\)", maxRefDists);
+		if (minRefDistC) { Table.setColumn("MinRefDist" + "\(" + unit + "\)", minRefDists);}
+		if (ctrRefDistC) { Table.setColumn("CtrRefDist" + "\(" + unit + "\)", ctrRefDists);}
+		if (maxRefDistC) { Table.setColumn("MaxRefDist" + "\(" + unit + "\)", maxRefDists);}
 	}
 	updateResults();
 	// selectWindow(imageTitle);
@@ -443,7 +442,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	print("-----");
 	restoreSettings();
 	showStatus(nRes + " min & max distances from reference coords to centroids added to results");
-	beep(); wait(300); beep(); wait(300); beep();
+	beep(); wait(300); beep(); wait(300); beep();beep(); wait(500); beep(); wait(500); beep();
 	run("Collect Garbage"); 
 }
 	/*  ( 8(|)	( 8(|)	All ASC Functions	@@@@@:-)	@@@@@:-)   */
