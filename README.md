@@ -18,9 +18,10 @@ ZERO Y AT TOP: Zero Y should be at the top of the image<br />
   <p>If the image is scaled, additional columns of &quot;unscaled&quot; pixel values will be added.</p>
   <p>The minimum and maximum distance lines can be drawn as overlays. LUTs can be used to color code the lines according to any parameters in the Results table.</p>
 <p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/Centroid-Intfc_Dist_Menu3_LCF_v190725_Lines_723x512_PAL.png" alt="Min and Max distance to reference coordinates example. This example uses a LUT to color code the minimum distances." height="512" /> </p>
-<p>
-Legal Notice: <br />
+<p><sub><sup>
+ <strong>Legal Notice:</strong> <br />
 These macros have been developed to demonstrate the power of the ImageJ macro language and we assume no responsibility whatsoever for its use by other parties, and make no guarantees, expressed or implied, about its quality, reliability, or any other characteristic. On the other hand we hope you do have fun with them without causing harm.
 <br />
 The macros are continually being tweaked and new features and options are frequently added, meaning that not all of these are fully tested. Please contact me if you have any problems, questions or requests for new modifications.
+ </sup></sub>
 </p>
