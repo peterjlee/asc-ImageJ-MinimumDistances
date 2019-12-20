@@ -25,3 +25,6 @@ These macros have been developed to demonstrate the power of the ImageJ macro la
 The macros are continually being tweaked and new features and options are frequently added, meaning that not all of these are fully tested. Please contact me if you have any problems, questions or requests for new modifications.
  </sup></sub>
 </p>
+Nearest Neighbor Object Separation</h3>
+<p>This macro measures the closest separation between neighboring objects. The minimum spacings are added to the Results table along with the connecting coordinates. The spacing connecting lines can be displayed on the images or animated.</p>
+<p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/NN-Sep_Lines_Anim_347x183.gif" alt="Touch count of each object." width="347" height="183" /></p>
