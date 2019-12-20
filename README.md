@@ -1,6 +1,4 @@
-# asc-ImageJ-MinimumDistance and Separation Macros for ImageJ/Fiji
-
-<h3>asc-ImageJ-MinimumDistances</h3>
+# asc-ImageJ-MinimumDistance Macros for ImageJ/Fiji
 
 This ImageJ macro adds the minimum distance between the centroid of a set of analyzed objects and a reference set of points to the ImageJ results table. This could be done with just a few lines of ImageJ/Fiji macro code but here we try to extract a few more distance derived details. This data can then used to provide position normalized quantification of microstructures, microchemistry and even images as in this publication: <a href="https://fs.magnet.fsu.edu/~lee/asc/pdf_papers/SMRG_pub643.html">PDF</a></p>
 
@@ -21,10 +19,6 @@ ZERO Y AT TOP: Zero Y should be at the top of the image<br />
   <p>If the image is scaled, additional columns of &quot;unscaled&quot; pixel values will be added.</p>
   <p>The minimum and maximum distance lines can be drawn as overlays. LUTs can be used to color code the lines according to any parameters in the Results table.</p>
 <p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/Centroid-Intfc_Dist_Menu3_LCF_v190725_Lines_723x512_PAL.png" alt="Min and Max distance to reference coordinates example. This example uses a LUT to color code the minimum distances." height="512" /> </p>
-
-<h3>Nearest Neighbor Object Separation</h3>
-<p>This macro measures the closest separation between neighboring objects. The minimum spacings are added to the Results table along with the connecting coordinates. The spacing connecting lines can be displayed on the images or animated.</p>
-<p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/NN-Sep_Lines_Anim_347x183.gif" alt="Touch count of each object." width="347" height="183" /></p>
 
 <p><sub><sup>
  <strong>Legal Notice:</strong> <br />
