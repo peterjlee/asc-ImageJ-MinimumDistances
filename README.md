@@ -21,7 +21,7 @@ ZERO Y AT TOP: Zero Y should be at the top of the image<br />
 <p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/Centroid-Intfc_Dist_Menu3_LCF_v190725_Lines_723x512_PAL.png" alt="Min and Max distance to reference coordinates example. This example uses a LUT to color code the minimum distances." height="512" /> </p>
 <p><img src="https://fs.magnet.fsu.edu/~lee/asc/ImageJUtilities/IA_Images/Centroid_dist-to-RefCoords_Workflow_Anim_720x512.gif" alt="Min and Max distance to reference coordinates example workflow animation. This example uses a LUT to color code the minimum distances." height="512" /> </p>
 <br />
-<p> The Calculate_Min-Dist_Using_2_Text_Coord_Files.ijm macro simply calculates the minimum distances between two sets of coordinates imported from text files. If an image is option there is the option to use the scale and units from the active image.
+<p> The <strong>Calculate_Min-Dist_Using_2_Text_Coord_Files.ijm<\strong> macro simply calculates the minimum distances between two sets of coordinates imported from text files. If an image is option there is the option to use the scale and units from the active image.
 <p><sub><sup>
  <strong>Legal Notice:</strong> <br />
 These macros have been developed to demonstrate the power of the ImageJ macro language and we assume no responsibility whatsoever for its use by other parties, and make no guarantees, expressed or implied, about its quality, reliability, or any other characteristic. On the other hand we hope you do have fun with them without causing harm.
