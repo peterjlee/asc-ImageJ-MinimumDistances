@@ -1,24 +1,33 @@
-/*	ImageJ Macro to calculate minimum distances between two sets of coordinates previously saved as text files.
+/*	ImageJ Macro to calculate minimum distances between two sets of coordinates previously saved as text files. Imports scale from open image if available
 	One set contains the origin points.
 	8/8/2017 11:39 AM  Peter J. Lee (NHMFL)
 	v190802 streamlined code somewhat.
 	v191118 Reverted to progress bar and switch "print" to "IJ.log". Uses Table functions introduced in ImageJ 1.52a
 	v191119 Added persistent showStatus introduced in ImageJ 1.52s
+	v200123 This adds some reassuring information
 */
+	macroL = "Calculate_Min-Dist_Using_2_Images_or_Text_Coord_Files_v200123.ijm";
 	saveSettings;
 	showStatus("!Running Calculate Min-Dist Macro");
 	/* Set default pixel size data from active image */
 	if (nResults>0) showMessageWithCancel("A results table is already open; do you want to continue?");
-	if (nImages>0) getPixelSize(unit, pixelWidth, pixelHeight);
+	if (nImages>0){
+		getPixelSize(unit, pixelWidth, pixelHeight);
+		sPs = 5 + lastIndexOf(pixelWidth,0); /* default decimal places */
+		imageTitle = getTitle();
+	}
 	else {
 		unit = "pixel";
 		pixelWidth = 1;
 		pixelHeight = 1;
+		sPs = 5; /* default decimal places */
+		imageTitle = "none";
 	}
-	Dialog.create("Macro Options");
+	Dialog.create(macroL + ": Options");
 	Dialog.addMessage("This macro uses two text files containing sets of coordinates and calculates\nthe minimum distance from each origin point to all destination points");
-	Dialog.addNumber("pixelWidth", pixelWidth);
-	Dialog.addNumber("pixelHeight", pixelHeight);
+	Dialog.addMessage("Scale obtained from open image: " + imageTitle);
+	Dialog.addNumber("pixelWidth", pixelWidth,sPs,sPs+2,unit);
+	Dialog.addNumber("pixelHeight", pixelHeight,sPs,sPs+2,unit);
 	Dialog.addMessage("Values in text files will be scaled using the values above");
 	Dialog.addString("Override unit with new choice?", unit);
 	Dialog.show();
@@ -184,7 +193,7 @@
 	setBatchMode("exit & display"); /* exit batch mode */
 	showStatus("!Min Dist macro completed in " + elapsed/1000 + " seconds");
 	beep(); wait(300); beep(); wait(300); beep();
-	run("Collect Garbage"); 
+	call("java.lang.System.gc"); 
 			
 /*-----------functions---------------------*/
 
@@ -192,6 +201,6 @@
 		/* 9/9/2017 added Garbage clean up suggested by Luc LaLonde - LBNL */
 		restoreSettings(); /* Restore previous settings before exiting */
 		setBatchMode("exit & display"); /* Probably not necessary if exiting gracefully but otherwise harmless */
-		run("Collect Garbage");
+		call("java.lang.System.gc");
 		exit(message);
 	}
