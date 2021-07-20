@@ -4,9 +4,9 @@
 	v190802 streamlined code somewhat.
 	v191118 Reverted to progress bar and switch "print" to "IJ.log". Uses Table functions introduced in ImageJ 1.52a
 	v191119 Added persistent showStatus introduced in ImageJ 1.52s
-	v200123 This adds some reassuring information
+	v210712 This adds some reassuring information  v210714-5 and more information provided in the dialogs
 */
-	macroL = "Calculate_Min-Dist_Using_2_Images_or_Text_Coord_Files_v200123.ijm";
+	macroL = "Calculate_Min-Dist_Using_2_Images_or_Text_Coord_Files_v210715.ijm";
 	saveSettings;
 	showStatus("!Running Calculate Min-Dist Macro");
 	/* Set default pixel size data from active image */
@@ -46,7 +46,7 @@
 		/* ask for a file to be imported */
 		showMessageWithCancel(message1 + "Because the image scale is assumed to be in pixels; the macro will generate only pixel distances. New minimum distance measurements will be added to table: MinDist\(px\), NearestDest_X, NearestDest_Y, MinDistAngle");
 	}
-	fileName = File.openDialog("Select the file to import with X and Y pixel coordinates.");
+	fileName = File.openDialog("Select the \"from/origin\" file to import with X and Y pixel coordinates.");
 	showStatus("!Running Calculate Min-Dist Macro with " + fileName);
 	allText = File.openAsString(fileName);
 	setBatchMode(true);
@@ -99,7 +99,7 @@
 		/* ask for a file to be imported */
 		showMessageWithCancel(message1 + "\nBecause the image scale is pixels the macro will generate only pixel distances.");
 	}
-	fileName = File.openDialog("Select the file to import with X and Y pixel coordinates.");
+	fileName = File.openDialog("Select the \"to/destination\" file to import with X and Y pixel coordinates.");
 	allText = File.openAsString(fileName);
 	setBatchMode(true);
 	startTime = getTime(); /* used for debugging macro to optimize speed */
@@ -194,13 +194,21 @@
 	showStatus("!Min Dist macro completed in " + elapsed/1000 + " seconds");
 	beep(); wait(300); beep(); wait(300); beep();
 	call("java.lang.System.gc"); 
-			
-/*-----------functions---------------------*/
-
+	/*
+		( 8(|)  ( 8(|)  ASC Functions	@@@@@:-)	@@@@@:-)
+	*/
+	function memFlush(waitTime) {
+		run("Reset...", "reset=[Undo Buffer]"); 
+		wait(waitTime);
+		run("Reset...", "reset=[Locked Image]"); 
+		wait(waitTime);
+		call("java.lang.System.gc"); /* force a garbage collection */
+		wait(waitTime);
+	}
 	function restoreExit(message){ /* Make a clean exit from a macro, restoring previous settings */
-		/* 9/9/2017 added Garbage clean up suggested by Luc LaLonde - LBNL */
+		/* v200305 1st version using memFlush function */
 		restoreSettings(); /* Restore previous settings before exiting */
 		setBatchMode("exit & display"); /* Probably not necessary if exiting gracefully but otherwise harmless */
-		call("java.lang.System.gc");
+		memFlush(200);
 		exit(message);
 	}
