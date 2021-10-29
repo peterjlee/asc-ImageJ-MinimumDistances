@@ -19,11 +19,14 @@
 	v190723 New table columns can be relabeled using a global prefix and/or suffix. v190723b Min and Lax lines can be drawn as overlays. v190725 LUTs can be used to color code lines according to table values.
 	v190731 Calibrated imported XY values can be used if they are to the same scale as the active image. v190802 Minor fixes.
 	v190805 Fixed space separated values option.
+	v201215 Updated arrayToString function.
+	v211022 Updated color choices   v211029 Added cividis.lut
 */
 
 macro "Add Min and Max Reference Distances Analyze Results Table" {
 	requires("1.52a"); /* For table functions */
 	getPixelSize(unit, pixelWidth, pixelHeight);
+	macroL = "Add_Min_and_Max-Ref-Dist-to-Centroids_to_Results_v211029.ijm";
 	imageTitle = getTitle();
 	userPath = getInfo("user.dir");
 	prefsNameKey = "ascMinMaxRefDistPrefs.";
@@ -43,7 +46,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	/* The above should be the defaults but this makes sure (black particles on a white background) http://imagejdocu.tudor.lu/doku.php?id=faq:technical:how_do_i_set_up_imagej_to_deal_with_white_particles_on_a_black_background_by_default
 	*/
 	print("");
-	print("Macro: " + getInfo("macro.filepath"));
+	print("Macro: " + macroL);
 	print("Image analyzed: " + getTitle());
 	setBatchMode(true);
 	tableHeadings = split(String.getResultsHeadings);
@@ -67,6 +70,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		impCals = newArray("pixels","exit");
 	}
 	Dialog.create("Calibration for Imported Coordinates");
+		Dialog.addMessage("Macro: " + macroL);
 		Dialog.addMessage(message1);
 		Dialog.addRadioButtonGroup("Calibration of imported coordinates: ", impCals,1,3,"pixels");
 	Dialog.show;
@@ -212,7 +216,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		Dialog.addCheckbox("Select all measurements \(override above\)", false);
 		Dialog.addString("Optional prefix to add to new measurement column labels","");
 		Dialog.addString("Optional suffix to append to new measurement column labels","");
-		colorChoice = newArray("LUT", "red", "green", "white", "black", "off-white", "off-black", "light_gray", "gray", "dark_gray", "pink",  "blue", "yellow", "orange", "garnet", "gold", "aqua_modern", "blue_accent_modern", "blue_dark_modern", "blue_modern", "gray_modern", "green_dark_modern", "green_modern", "orange_modern", "pink_modern", "purple_modern", "jazzberry_jam", "red_N_modern", "red_modern", "tan_modern", "violet_modern", "yellow_modern", "Radical Red", "Wild Watermelon", "Outrageous Orange", "Supernova Orange","Atomic Tangerine", "Neon Carrot", "Sunglow", "Laser Lemon", "Electric Lime", "Screamin' Green", "Magic Mint", "Blizzard Blue", "Dodger Blue", "Shocking Pink", "Razzle Dazzle Rose", "Hot Magenta");
+		colorChoice = newArray("LUT", "red", "green", "white", "black", "off-white", "off-black", "light_gray", "gray", "dark_gray", "pink",  "blue", "yellow", "orange", "garnet", "gold", "aqua_modern", "blue_accent_modern", "blue_dark_modern", "blue_modern", "gray_modern", "green_dark_modern", "green_modern", "orange_modern", "pink_modern", "purple_modern", "jazzberry_jam", "red_n_modern", "red_modern", "tan_modern", "violet_modern", "yellow_modern", "radical_red", "wild_watermelon", "outrageous_orange", "atomic_tangerine", "neon_carrot", "sunglow", "laser_lemon", "electric_lime", "screamin'_green", "magic_mint", "blizzard_blue", "shocking_pink", "razzle_dazzle_rose", "hot_magenta");
 		grayChoice = newArray("white", "black", "light_gray", "gray", "dark_gray");
 		Dialog.addCheckbox("Draw overlay lines from centroid to nearest reference point?", false);
 		Dialog.addChoice("Line color to minimum \(choose LUT for indexed color\):", colorChoice, colorChoice[2]);
@@ -443,41 +447,32 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	restoreSettings();
 	showStatus(nRes + " min & max distances from reference coords to centroids added to results");
 	beep(); wait(300); beep(); wait(300); beep();beep(); wait(500); beep(); wait(500); beep();
-	run("Collect Garbage"); 
+	call("java.lang.System.gc"); 
 }
 	/*  ( 8(|)	( 8(|)	All ASC Functions	@@@@@:-)	@@@@@:-)   */
 	
-	function arrayToString(array,delimiters){
+	function arrayToString(array,delimiter){
 		/* 1st version April 2019 PJL
-			v190722 Modified to handle zero length array */
-		string = "";
+			v190722 Modified to handle zero length array
+			v201215 += stopped working so this shortcut has been replaced */
 		for (i=0; i<array.length; i++){
-			if (i==0) string += array[0];
-			else  string = string + delimiters + array[i];
+			if (i==0) string = "" + array[0];
+			else  string = string + delimiter + array[i];
 		}
 		return string;
-	}
-	function indexOfArray(array, value, default) {
-		/* v190423 Adds "default" parameter (use -1 for backwards compatibility). Returns only first found value */
-		index = default;
-		for (i=0; i<lengthOf(array); i++){
-			if (array[i]==value) {
-				index = i;
-				i = lengthOf(array);
-			}
-		}
-	  return index;
 	}
 	function restoreExit(message){ /* Make a clean exit from a macro, restoring previous settings */
 		/* 9/9/2017 added Garbage clean up suggested by Luc LaLonde - LBNL */
 		restoreSettings(); /* Restore previous settings before exiting */
 		setBatchMode("exit & display"); /* Probably not necessary if exiting gracefully but otherwise harmless */
-		run("Collect Garbage");
+		call("java.lang.System.gc");
 		exit(message);
 	}
 	function getColorArrayFromColorName(colorName) {
 		/* v180828 added Fluorescent Colors
 		   v181017-8 added off-white and off-black for use in gif transparency and also added safe exit if no color match found
+		   v191211 added Cyan
+		   v211022 all names lower-case, all spaces to underscores
 		*/
 		if (colorName == "white") cA = newArray(255,255,255);
 		else if (colorName == "black") cA = newArray(0,0,0);
@@ -496,6 +491,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		else if (colorName == "blue") cA = newArray(0,0,255);
 		else if (colorName == "yellow") cA = newArray(255,255,0);
 		else if (colorName == "orange") cA = newArray(255, 165, 0);
+		else if (colorName == "cyan") cA = newArray(0, 255, 255);
 		else if (colorName == "garnet") cA = newArray(120,47,64);
 		else if (colorName == "gold") cA = newArray(206,184,136);
 		else if (colorName == "aqua_modern") cA = newArray(75,172,198); /* #4bacc6 AKA "Viking" aqua */
@@ -511,28 +507,28 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		else if (colorName == "pink_modern") cA = newArray(255,105,180);
 		else if (colorName == "purple_modern") cA = newArray(128,100,162);
 		else if (colorName == "jazzberry_jam") cA = newArray(165,11,94);
-		else if (colorName == "red_N_modern") cA = newArray(227,24,55);
+		else if (colorName == "red_n_modern") cA = newArray(227,24,55);
 		else if (colorName == "red_modern") cA = newArray(192,80,77);
 		else if (colorName == "tan_modern") cA = newArray(238,236,225);
 		else if (colorName == "violet_modern") cA = newArray(76,65,132);
 		else if (colorName == "yellow_modern") cA = newArray(247,238,69);
 		/* Fluorescent Colors https://www.w3schools.com/colors/colors_crayola.asp */
-		else if (colorName == "Radical Red") cA = newArray(255,53,94);			/* #FF355E */
-		else if (colorName == "Wild Watermelon") cA = newArray(253,91,120);		/* #FD5B78 */
-		else if (colorName == "Outrageous Orange") cA = newArray(255,96,55);	/* #FF6037 */
-		else if (colorName == "Supernova Orange") cA = newArray(255,191,63);	/* FFBF3F Supernova Neon Orange*/
-		else if (colorName == "Atomic Tangerine") cA = newArray(255,153,102);	/* #FF9966 */
-		else if (colorName == "Neon Carrot") cA = newArray(255,153,51);			/* #FF9933 */
-		else if (colorName == "Sunglow") cA = newArray(255,204,51); 			/* #FFCC33 */
-		else if (colorName == "Laser Lemon") cA = newArray(255,255,102); 		/* #FFFF66 "Unmellow Yellow" */
-		else if (colorName == "Electric Lime") cA = newArray(204,255,0); 		/* #CCFF00 */
-		else if (colorName == "Screamin' Green") cA = newArray(102,255,102); 	/* #66FF66 */
-		else if (colorName == "Magic Mint") cA = newArray(170,240,209); 		/* #AAF0D1 */
-		else if (colorName == "Blizzard Blue") cA = newArray(80,191,230); 		/* #50BFE6 Malibu */
-		else if (colorName == "Dodger Blue") cA = newArray(9,159,255);			/* #099FFF Dodger Neon Blue */
-		else if (colorName == "Shocking Pink") cA = newArray(255,110,255);		/* #FF6EFF Ultra Pink */
-		else if (colorName == "Razzle Dazzle Rose") cA = newArray(238,52,210); 	/* #EE34D2 */
-		else if (colorName == "Hot Magenta") cA = newArray(255,0,204);			/* #FF00CC AKA Purple Pizzazz */
+		else if (colorName == "radical_red") cA = newArray(255,53,94);			/* #FF355E */
+		else if (colorName == "wild_watermelon") cA = newArray(253,91,120);		/* #FD5B78 */
+		else if (colorName == "outrageous_orange") cA = newArray(255,96,55);	/* #FF6037 */
+		else if (colorName == "supernova_orange") cA = newArray(255,191,63);	/* FFBF3F Supernova Neon Orange*/
+		else if (colorName == "atomic_tangerine") cA = newArray(255,153,102);	/* #FF9966 */
+		else if (colorName == "neon_carrot") cA = newArray(255,153,51);			/* #FF9933 */
+		else if (colorName == "sunglow") cA = newArray(255,204,51); 			/* #FFCC33 */
+		else if (colorName == "laser_lemon") cA = newArray(255,255,102); 		/* #FFFF66 "Unmellow Yellow" */
+		else if (colorName == "electric_lime") cA = newArray(204,255,0); 		/* #CCFF00 */
+		else if (colorName == "screamin'_green") cA = newArray(102,255,102); 	/* #66FF66 */
+		else if (colorName == "magic_mint") cA = newArray(170,240,209); 		/* #AAF0D1 */
+		else if (colorName == "blizzard_blue") cA = newArray(80,191,230); 		/* #50BFE6 Malibu */
+		else if (colorName == "dodger_blue") cA = newArray(9,159,255);			/* #099FFF Dodger Neon Blue */
+		else if (colorName == "shocking_pink") cA = newArray(255,110,255);		/* #FF6EFF Ultra Pink */
+		else if (colorName == "razzle_dazzle_rose") cA = newArray(238,52,210); 	/* #EE34D2 */
+		else if (colorName == "hot_magenta") cA = newArray(255,0,204);			/* #FF00CC AKA Purple Pizzazz */
 		else restoreExit("No color match to " + colorName);
 		return cA;
 	}
@@ -541,25 +537,24 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		setColor(colorArray[0], colorArray[1], colorArray[2]);
 	}
 	function getLutsList() {
-		/* v180723 added check for preferred LUTs */
-		lutsCheck = 0;
+		/* v180723 added check for preferred LUTs
+			v210430 expandable array version   v211029 Added cividis.lut */
 		defaultLuts= getList("LUTs");
 		Array.sort(defaultLuts);
 		lutsDir = getDirectory("LUTs");
 		/* A list of frequently used LUTs for the top of the menu list . . . */
-		preferredLutsList = newArray("Your favorite LUTS here", "silver-asc", "viridis-linearlumin", "mpl-viridis", "mpl-plasma", "Glasbey", "Grays");
-		preferredLuts = newArray(preferredLutsList.length);
-		counter = 0;
-		for (i=0; i<preferredLutsList.length; i++) {
+		preferredLutsList = newArray("Your favorite LUTS here", "cividis", "viridis-linearlumin", "silver-asc", "mpl-viridis", "mpl-plasma", "Glasbey", "Grays");
+		preferredLuts = newArray;
+		/* Filter preferredLutsList to make sure they are available . . . */
+		for (i=0, countL=0; i<preferredLutsList.length; i++) {
 			for (j=0; j<defaultLuts.length; j++) {
 				if (preferredLutsList[i] == defaultLuts[j]) {
-					preferredLuts[counter] = preferredLutsList[i];
-					counter +=1;
+					preferredLuts[countL] = preferredLutsList[i];
+					countL++;
 					j = defaultLuts.length;
 				}
 			}
 		}
-		preferredLuts = Array.trim(preferredLuts, counter);
 		lutsList=Array.concat(preferredLuts, defaultLuts);
 		return lutsList; /* Required to return new array */
 	}
