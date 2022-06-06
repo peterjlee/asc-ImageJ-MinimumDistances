@@ -560,13 +560,13 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		return lutsList; /* Required to return new array */
 	}
 	function pad(n) {
-		/* v220603 required for versions >1.53s32 as "toString" outputs a string as NaN in those versions rather than passing through the string */
+		/* v220603-6 required for versions >1.53s32 as "toString" outputs a string as NaN in those versions rather than passing through the string */
 		l = lengthOf(n);
 		s = "";
 		for (i = 0; i < l; i++){
 			v = substring(n,i,i+1);
 			w = toString(v);
-			if (w==NaN) w = v;
+			if (isNaN(w)) w = v;
 			s += w;
 		}
 		if (lengthOf(s)==1) s = "0" + s;
