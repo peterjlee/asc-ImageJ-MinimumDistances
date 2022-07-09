@@ -20,13 +20,12 @@
 	v190731 Calibrated imported XY values can be used if they are to the same scale as the active image. v190802 Minor fixes.
 	v190805 Fixed space separated values option.
 	v201215 Updated arrayToString function.
-	v211022 Updated color choices   v211029 Added cividis.lut'  v211029-f3: Updated functions
+	v211022 Updated color choices   v211029 Added cividis.lut'  v211029-f3: Updated functions f4 updated colors
 */
-
 macro "Add Min and Max Reference Distances Analyze Results Table" {
 	requires("1.52a"); /* For table functions */
 	getPixelSize(unit, pixelWidth, pixelHeight);
-	macroL = "Add_Min_and_Max-Ref-Dist-to-Centroids_to_Results_v211029-f3.ijm";
+	macroL = "Add_Min_and_Max-Ref-Dist-to-Centroids_to_Results_v211029-f4.ijm";
 	imageTitle = getTitle();
 	userPath = getInfo("user.dir");
 	prefsNameKey = "ascMinMaxRefDistPrefs.";
@@ -83,7 +82,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	fileName = File.openDialog("Select the file to import with X and Y " + unitP + " coordinates.");
 	allText = File.openAsString(fileName);
 	if (impCal == "pixels"){
-		Dialog.create("Pixel center correction");	
+		Dialog.create("Pixel center correction");
 			Dialog.addMessage("Exported pixel coordinates use the top left the pixel but analyzed object coordinates\nare based on the center of the pixel.\n \nTo correct for this you can add 0.5 pixels to the imported X and Y coordinates.")
 			Dialog.addCheckbox("Convert pixel coordinates to Analyze pixel centers? \(Add 0.5 pixels to X and Y\)", true);
 			Dialog.addMessage("Subsequently revert the discovered MinLoc/MaxLoc coordinates to match imported values\nwhen saving to the Results table \(MinLoc X&Y and MaxLoc X&Y only\).")
@@ -96,7 +95,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 			if (!areUShure) revertToImportedXY = false;
 		}
 	}
-	else { 
+	else {
 		coordToCtr = false;
 		revertToImportedXY = false;
 	}
@@ -136,7 +135,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		ypoints = Array.trim(ypoints, coOrds);
 	}
 	importReport1 = "Imported " + coOrds + " points from " + fileName + " " +  fileFormat + " point set";
-	if (hdrCount==0) print(importReport1);	
+	if (hdrCount==0) print(importReport1);
 	else print(importReport1 + ", ignoring " + hdrCount + " lines of header.");
 	/* loading and parsing each line */
 	Array.getStatistics(xpoints, minx, maxx, meanx, stdx);
@@ -216,17 +215,20 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		Dialog.addCheckbox("Select all measurements \(override above\)", false);
 		Dialog.addString("Optional prefix to add to new measurement column labels","");
 		Dialog.addString("Optional suffix to append to new measurement column labels","");
-		colorChoice = newArray("LUT", "red", "green", "white", "black", "off-white", "off-black", "light_gray", "gray", "dark_gray", "pink",  "blue", "yellow", "orange", "garnet", "gold", "aqua_modern", "blue_accent_modern", "blue_dark_modern", "blue_modern", "blue_honolulu", "gray_modern", "green_dark_modern", "green_modern", "orange_modern", "pink_modern", "purple_modern", "jazzberry_jam", "red_n_modern", "red_modern", "tan_modern", "violet_modern", "yellow_modern", "radical_red", "wild_watermelon", "outrageous_orange", "atomic_tangerine", "neon_carrot", "sunglow", "laser_lemon", "electric_lime", "screamin'_green", "magic_mint", "blizzard_blue", "shocking_pink", "razzle_dazzle_rose", "hot_magenta");
-		grayChoice = newArray("white", "black", "light_gray", "gray", "dark_gray");
+		grayChoices = newArray("white", "black", "off-white", "off-black", "light_gray", "gray", "dark_gray");
+		colorChoicesStd = newArray("red", "cyan", "pink", "green", "blue", "magenta", "yellow", "orange");
+		colorChoicesMod = newArray("garnet", "gold", "aqua_modern", "blue_accent_modern", "blue_dark_modern", "blue_modern", "blue_honolulu", "gray_modern", "green_dark_modern", "green_modern", "green_modern_accent", "green_spring_accent", "orange_modern", "pink_modern", "purple_modern", "red_n_modern", "red_modern", "tan_modern", "violet_modern", "yellow_modern");
+		colorChoicesNeon = newArray("jazzberry_jam", "radical_red", "wild_watermelon", "outrageous_orange", "supernova_orange", "atomic_tangerine", "neon_carrot", "sunglow", "laser_lemon", "electric_lime", "screamin'_green", "magic_mint", "blizzard_blue", "dodger_blue", "shocking_pink", "razzle_dazzle_rose", "hot_magenta");
+		colorChoices = Array.concat("LUT", grayChoices, colorChoicesStd, colorChoicesMod, colorChoicesNeon);
 		Dialog.addCheckbox("Draw overlay lines from centroid to nearest reference point?", false);
-		Dialog.addChoice("Line color to minimum \(choose LUT for indexed color\):", colorChoice, colorChoice[2]);
+		Dialog.addChoice("Line color to minimum \(choose LUT for indexed color\):", colorChoices, colorChoices[2]);
 		Dialog.addChoice("Choose LUT for Min line:", luts, luts[0]);
 		iCol = indexOfArray(newDistCols,"MinDist\(px\)",0);
 		oldAndNewCols = Array.concat(newDistCols, tableHeadings);
 		Dialog.addChoice("If LUT choose a parameter to code min line by:", oldAndNewCols, oldAndNewCols[iCol]);
 		Dialog.addNumber("Line width to minimum",1);
 		Dialog.addCheckbox("Draw overlay lines from centroid to furthest reference point?", false);
-		Dialog.addChoice("Line color to maximum \(choose LUT for indexed color\):", colorChoice, colorChoice[1]);
+		Dialog.addChoice("Line color to maximum \(choose LUT for indexed color\):", colorChoices, colorChoices[1]);
 		Dialog.addChoice("Choose LUT for Max line:", luts, luts[1]);
 		iCol = indexOfArray(newDistCols,"MaxDist\(px\)",0);
 		Dialog.addChoice("If LUT choose a parameter to code max line by:", oldAndNewCols, oldAndNewCols[iCol]);
@@ -361,7 +363,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		if (minDistAngleC) minDistAngles[i] = mda;
 		dRefs[i] = sqrt(pow(x1[i]-meanx,2)+pow(y1[i]-meany,2));
 		fMinDAngleOs[i] = abs(fAngles[i]-mda);
-		if (fMinDAngleOs[i]>90) fMinDAngleOs[i] = 180 - fMinDAngleOs[i]; 
+		if (fMinDAngleOs[i]>90) fMinDAngleOs[i] = 180 - fMinDAngleOs[i];
 		if (lcf!=1) {
 			if (minRefDistC) minRefDists[i] = minDs[i]*lcf;
 			if (ctrRefDistC) ctrRefDists[i] = dRefs[i]*lcf;
@@ -447,10 +449,9 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	restoreSettings();
 	showStatus(nRes + " min & max distances from ref-xy to centroids added to results");
 	beep(); wait(300); beep(); wait(300); beep();beep(); wait(500); beep(); wait(500); beep();
-	call("java.lang.System.gc"); 
+	call("java.lang.System.gc");
 }
 	/*  ( 8(|)	( 8(|)	All ASC Functions	@@@@@:-)	@@@@@:-)   */
-	
 	function arrayToString(array,delimiter){
 		/* 1st version April 2019 PJL
 			v190722 Modified to handle zero length array
@@ -472,7 +473,8 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		/* v180828 added Fluorescent Colors
 		   v181017-8 added off-white and off-black for use in gif transparency and also added safe exit if no color match found
 		   v191211 added Cyan
-		   v211022 all names lower-case, all spaces to underscores v220225 Added more hash value comments as a reference
+		   v211022 all names lower-case, all spaces to underscores v220225 Added more hash value comments as a reference v220706 restores missing magenta
+		   REQUIRES restoreExit function.  56 Colors
 		*/
 		if (colorName == "white") cA = newArray(255,255,255);
 		else if (colorName == "black") cA = newArray(0,0,0);
@@ -489,6 +491,7 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 		else if (colorName == "pink") cA = newArray(255, 192, 203);
 		else if (colorName == "green") cA = newArray(0,255,0); /* #00FF00 AKA Lime green */
 		else if (colorName == "blue") cA = newArray(0,0,255);
+		else if (colorName == "magenta") cA = newArray(255,0,255); /* #FF00FF */
 		else if (colorName == "yellow") cA = newArray(255,255,0);
 		else if (colorName == "orange") cA = newArray(255, 165, 0);
 		else if (colorName == "cyan") cA = newArray(0, 255, 255);
@@ -564,7 +567,6 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	  if (lengthOf(n)==1) n= "0"+n; return n;
 	  if (lengthOf(""+n)==1) n= "0"+n; return n;
 	}
-	
 	function loadLutColorsFromTemp(lut) {
 		/* v190724 creates temp image for lut color acquisition */
 		if (is("Batch Mode")==false){
