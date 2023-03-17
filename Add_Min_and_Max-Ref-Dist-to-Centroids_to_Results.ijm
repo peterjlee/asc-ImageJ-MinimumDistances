@@ -569,17 +569,16 @@ macro "Add Min and Max Reference Distances Analyze Results Table" {
 	  if (lengthOf(n)==1) n= "0"+n; return n;
 	  if (lengthOf(""+n)==1) n= "0"+n; return n;
 	}
-	function indexOfArrayThatStartsWith(array, value, default) {
-		/* Like indexOfArray but partial matches possible
-			v220804 1st version */
-		indexFound = default;
+	function indexOfArray(array,string, default) {
+		/* v190423 Adds "default" parameter (use -1 for backwards compatibility). Returns only first instance of string */
+		index = default;
 		for (i=0; i<lengthOf(array); i++){
-			if (indexOf(array[i], value)==0){
-				indexFound = i;
+			if (array[i]==string) {
+				index = i;
 				i = lengthOf(array);
 			}
 		}
-		return indexFound;
+		return index;
 	}
 	function loadLutColorsFromTemp(lut) {
 		/* v190724 creates temp image for lut color acquisition */
